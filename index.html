@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bunny Trev</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Montserrat:wght@300;400;600&display=swap" rel="stylesheet" />
+  
+
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --space-color: #0a0a0a;
+      --romantic-color: #e0527a;
+      --car-color: #3a8fff;
+      --anime-color: #e03030;
+      --text-white: #f0f0f0;
+      --glass-bg: rgba(255, 255, 255, 0.04);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: #080808;
+      color: var(--text-white);
+      font-family: 'Montserrat', sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* ─── VIDEO BACKGROUND ───────────────────────────────────── */
+
+    .video-bg {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      z-index: -2;
+
+      /* ★ bg.mp4 goes here — place it in the same folder as index.html */
+      /* src is set below in the <video> tag */
+    }
+
+    .video-overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.32);
+      z-index: -1;
+    }
+
+    /* ─── HERO SECTION ───────────────────────────────────────── */
+
+    .hero {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    /* Logo — top center, watermark energy */
+     .logo-text{
+        display:flex;
+        flex-direction:column;
+        align-items: center;
+        line-height: 1;
+
+      }
+      .logo-bunny{
+        font-family: 'Bebas Neue',sans-serif;
+        font-size: clamp(32px,5vw,60px);
+        color: #4fc3f7;
+        text-shadow: 0 0 2px rgba(79,195,247,0.9),
+                     0 0 40px rgba(79, 83, 247, 0.5);
+        letter-spacing: 6px;
+      }
+      .logo-trev{ font-family: 'Bebas Neue',sans-serif;
+        font-size: clamp(32px,5vw,60px);
+        color: #ef5350;
+        text-shadow: 0 0 2px rgba(239,83,80,0.9),
+                     0 0 40px rgba(239, 83, 80, 0.5);
+        letter-spacing: 6px;
+
+      }
+    .logo-wrap {
+      position: absolute;
+      top: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+    }
+
+
+    /* Button grid */
+    .btn-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      padding: 0 24px;
+      max-width: 480px;
+      width: 100%;
+      opacity: 0;
+      animation: fadeUp 1s ease 0.7s forwards;
+    }
+
+    .category-btn {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 18px 22px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      color: #fff;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(1.1rem, 3vw, 1.35rem);
+      letter-spacing: 0.12em;
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 0.22s ease, filter 0.22s ease, background 0.22s ease;
+      overflow: hidden;
+    }
+
+    .category-btn .btn-icon {
+      font-size: 1.15em;
+      line-height: 1;
+    }
+
+    /* Space */
+    .btn-space {
+      border-color: rgba(180, 180, 210, 0.35);
+      animation: glowSpace 2.8s ease-in-out infinite;
+    }
+    @keyframes glowSpace {
+      0%, 100% { box-shadow: 0 0 10px rgba(120,120,160,0.25), inset 0 0 10px rgba(120,120,160,0.06); }
+      50%       { box-shadow: 0 0 28px rgba(120,120,160,0.55), inset 0 0 18px rgba(120,120,160,0.12); }
+    }
+    .btn-space:hover { background: rgba(120,120,160,0.14); transform: scale(1.04); }
+
+    /* Romantic */
+    .btn-romantic {
+      border-color: rgba(224, 82, 122, 0.5);
+      animation: glowRomantic 2.8s ease-in-out infinite;
+    }
+    @keyframes glowRomantic {
+      0%, 100% { box-shadow: 0 0 10px rgba(224,82,122,0.25), inset 0 0 10px rgba(224,82,122,0.06); }
+      50%       { box-shadow: 0 0 30px rgba(224,82,122,0.6),  inset 0 0 20px rgba(224,82,122,0.13); }
+    }
+    .btn-romantic:hover { background: rgba(224,82,122,0.14); transform: scale(1.04); }
+
+    /* Car */
+    .btn-car {
+      border-color: rgba(58, 143, 255, 0.5);
+      animation: glowCar 2.8s ease-in-out infinite;
+    }
+    @keyframes glowCar {
+      0%, 100% { box-shadow: 0 0 10px rgba(58,143,255,0.25), inset 0 0 10px rgba(58,143,255,0.06); }
+      50%       { box-shadow: 0 0 30px rgba(58,143,255,0.6),  inset 0 0 20px rgba(58,143,255,0.13); }
+    }
+    .btn-car:hover { background: rgba(58,143,255,0.14); transform: scale(1.04); }
+
+    /* Anime */
+    .btn-anime {
+      border-color: rgba(224, 48, 48, 0.5);
+      animation: glowAnime 2.8s ease-in-out infinite;
+    }
+    @keyframes glowAnime {
+      0%, 100% { box-shadow: 0 0 10px rgba(224,48,48,0.25), inset 0 0 10px rgba(224,48,48,0.06); }
+      50%       { box-shadow: 0 0 30px rgba(224,48,48,0.6),  inset 0 0 20px rgba(224,48,48,0.13); }
+    }
+    .btn-anime:hover { background: rgba(224,48,48,0.14); transform: scale(1.04); }
+
+    /* Scroll hint */
+    .scroll-hint {
+      position: absolute;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      opacity: 0;
+      animation: fadeIn 1s ease 1.4s forwards;
+    }
+
+    .scroll-hint span {
+      font-size: 0.62rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.38);
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 300;
+    }
+
+    .scroll-arrow {
+      width: 1px;
+      height: 38px;
+      background: linear-gradient(to bottom, rgba(255,255,255,0.5), transparent);
+      animation: scrollPulse 1.8s ease-in-out infinite;
+    }
+
+    @keyframes scrollPulse {
+      0%, 100% { opacity: 0.3; transform: scaleY(1); }
+      50%       { opacity: 1;   transform: scaleY(1.18); }
+    }
+
+    /* ─── CONTENT SECTION ────────────────────────────────────── */
+
+    .content-section {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 120px 24px;
+      position: relative;
+      background: linear-gradient(to bottom, transparent 0%, rgba(8,8,8,0.88) 30%, #080808 100%);
+    }
+
+    .tagline {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-style: italic;
+      font-size: clamp(1.4rem, 4.5vw, 2.6rem);
+      color: rgba(240,240,240,0.88);
+      text-align: center;
+      max-width: 640px;
+      line-height: 1.55;
+      letter-spacing: 0.02em;
+      margin-bottom: 56px;
+
+      /* ★ Edit the tagline text below */
+    }
+
+    .tagline-placeholder {
+      /* placeholder style so it's visible during editing */
+      color: rgba(240,240,240,0.55);
+    }
+
+    /* Book Now button */
+    .book-btn {
+      display: inline-block;
+      padding: 16px 52px;
+      border-radius: 50px;
+      background: linear-gradient(135deg, #3a8fff 0%, #e03030 100%);
+      color: #fff;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.25rem;
+      letter-spacing: 0.18em;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s ease, filter 0.2s ease;
+      animation: glowBook 3s ease-in-out infinite;
+    }
+
+    @keyframes glowBook {
+      0%, 100% { box-shadow: 0 0 18px rgba(58,143,255,0.35), 0 0 40px rgba(224,48,48,0.2); }
+      50%       { box-shadow: 0 0 35px rgba(58,143,255,0.65), 0 0 70px rgba(224,48,48,0.4); }
+    }
+
+    .book-btn:hover {
+      transform: scale(1.05);
+      filter: brightness(1.12);
+    }
+
+    .book-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 60%);
+      border-radius: inherit;
+    }
+
+    /* ─── DIVIDER ─────────────────────────────────────────────── */
+
+    .divider {
+      width: 1px;
+      height: 80px;
+      background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.15), transparent);
+      margin: 0 auto 64px;
+    }
+
+    /* ─── FOOTER ──────────────────────────────────────────────── */
+
+    footer {
+      background: #050505;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      padding: 64px 24px 48px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      text-align: center;
+    }
+
+    .footer-logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2rem;
+      letter-spacing: 0.2em;
+      background: linear-gradient(135deg, #3a8fff, #e03030);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .footer-handles {
+      display: flex;
+      gap: 28px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .footer-handle {
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+      color: rgba(255,255,255,0.4);
+      font-weight: 300;
+      transition: color 0.2s;
+      cursor: pointer;
+
+      /* ★ Replace with real Instagram handles */
+    }
+
+    .footer-handle:hover {
+      color: rgba(255,255,255,0.75);
+    }
+
+    .footer-line {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 0.95rem;
+      color: rgba(255,255,255,0.28);
+      letter-spacing: 0.05em;
+      margin-top: 8px;
+    }
+
+    /* ─── ANIMATIONS ──────────────────────────────────────────── */
+
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    /* ─── RESPONSIVE ──────────────────────────────────────────── */
+
+    @media (max-width: 480px) {
+      .btn-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 13px;
+        max-width: 340px;
+      }
+
+      .category-btn {
+        padding: 14px 10px;
+        font-size: 1rem;
+      }
+
+      .footer-handles {
+        flex-direction: column;
+        gap: 12px;
+      }
+    }
+    /* ─── MUSIC BUTTON ───────────────────────────── */
+
+.music-toggle {
+  position: fixed;
+  top: 28px;
+  right: 28px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1px solid rgba(58,143,255,0.45);
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.2rem;
+  cursor: pointer;
+  z-index: 20;
+  transition: all 0.25s ease;
+  box-shadow:
+    0 0 16px rgba(58,143,255,0.25),
+    0 0 30px rgba(224,48,48,0.15);
+}
+
+.music-toggle:hover {
+  transform: scale(1.08);
+  background: rgba(58,143,255,0.12);
+}
+
+
+    @media (max-width: 340px) {
+      .btn-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ★ VIDEO BACKGROUND — place bg.mp4 in the same folder as index.html -->
+  <video class="video-bg" autoplay muted loop playsinline>
+    <source src="miles2.mp4" type="video/mp4" />
+    <!-- bg.mp4 goes here — same directory as index.html -->
+  </video>
+
+  <!-- Dark overlay on top of video -->
+  <div class="video-overlay"></div>
+  <!-- Music Button -->
+<div class="music-toggle" id="musicBtn">
+  🎵
+</div>
+
+<!-- Audio -->
+<audio id="bgMusic" loop>
+  <source src="whats up danger.mp3" type="audio/mpeg">
+</audio>
+
+
+  <!-- ═══════════════════════════════════════════════
+       SECTION 1 — Hero
+  ═══════════════════════════════════════════════ -->
+  <section class="hero">
+
+    <!-- Logo — top center -->
+    <div class="logo-wrap">
+      <div class="logo-text"> 
+      <span class="logo-bunny">BUNNY</span>
+      <span class="logo-trev">TREV</span>
+      </div>
+    </div>
+    
+
+    <!-- Category buttons -->
+    <nav class="btn-grid">
+
+      <!-- Space -->
+      <a href="space.html" class="category-btn btn-space">
+        <span class="btn-icon">🌌</span>
+        Space
+      </a>
+
+      <!-- Romantic -->
+      <a href="romantic.html" class="category-btn btn-romantic">
+        <span class="btn-icon">🌹</span>
+        Romantic
+      </a>
+
+      <!-- Car -->
+      <a href="car.html" class="category-btn btn-car">
+        <span class="btn-icon">🚗</span>
+        Car
+      </a>
+
+      <!-- Anime -->
+      <a href="anime.html" class="category-btn btn-anime">
+        <span class="btn-icon">⛩️</span>
+        Anime
+      </a>
+
+    </nav>
+
+    <!-- Scroll hint -->
+    <div class="scroll-hint">
+      <span>Scroll</span>
+      <div class="scroll-arrow"></div>
+    </div>
+
+  </section>
+
+
+  <!-- ═══════════════════════════════════════════════
+       SECTION 2 — Tagline + Book Now
+  ═══════════════════════════════════════════════ -->
+  <section class="content-section">
+
+    <!-- ★ Edit this tagline -->
+    <p class="tagline tagline-placeholder">
+      We build custom celebration sites for the people you love
+    </p>
+
+    <!-- ★ Replace TREVOR'S NUMBER HERE with the actual WhatsApp number e.g. 254712345678 -->
+    <a class="book-btn" href="https://wa.me/+254723838111">
+      Book Now
+    </a>
+
+  </section>
+
+  <div class="divider"></div>
+
+
+  <!-- ═══════════════════════════════════════════════
+       SECTION 3 — Footer
+  ═══════════════════════════════════════════════ -->
+  <footer>
+
+    <div class="footer-logo">Bunny Trev</div>
+
+    <div class="footer-handles">
+      <!-- ★ Replace with real Instagram handles -->
+      <span class="footer-handle">@bunny_ripper</span>
+      <span class="footer-handle">@t.revor._</span>
+    </div>
+
+    <p class="footer-line">We don't make websites. We make experiences.</p>
+
+  </footer>
+
+
+  <script>
+    // Smooth scroll past hero when clicking scroll hint
+    document.querySelector('.scroll-hint')?.addEventListener('click', () => {
+      document.querySelector('.content-section')?.scrollIntoView({ behavior: 'smooth' });
+    });
+    // Music toggle
+const musicBtn = document.getElementById('musicBtn');
+const bgMusic = document.getElementById('bgMusic');
+
+let isPlaying = false;
+
+musicBtn.addEventListener('click', () => {
+  if (isPlaying) {
+    bgMusic.pause();
+    musicBtn.innerHTML = '🎵';
+  } else {
+    bgMusic.play();
+    musicBtn.innerHTML = '⏸';
+  }
+
+  isPlaying = !isPlaying;
+});
+
+
+    // Pause video when tab is hidden (battery saving)
+    const vid = document.querySelector('.video-bg');
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) vid?.pause();
+      else vid?.play();
+    });
+  </script>
+
+</body>
+</html>

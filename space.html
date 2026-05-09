@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SECTOR 7 — MISSION CONTROL</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green: #00ff88;
+    --amber: #ffb300;
+    --red: #ff3838;
+    --blue: #00cfff;
+    --dim-green: #00ff8844;
+    --glow-green: 0 0 8px #00ff88, 0 0 20px #00ff8844;
+    --glow-amber: 0 0 8px #ffb300, 0 0 20px #ffb30044;
+    --glow-blue: 0 0 8px #00cfff, 0 0 20px #00cfff44;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw; height: 100vh;
+    overflow: hidden;
+    background: #000;
+    font-family: 'Share Tech Mono', monospace;
+    cursor: crosshair;
+  }
+
+  /* ─── LAYERS ─── */
+  #bg {
+    position: fixed; inset: 0;
+    background: url('cockpit.jpg') center center / cover no-repeat;
+    opacity: 0;
+    transition: opacity 1.8s ease;
+    z-index: 1;
+  }
+  #bg.visible { opacity: 1; }
+
+  #canvas-stars {
+    position: fixed; inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  #canvas-stars.visible { opacity: 1; }
+
+  #overlay {
+    position: fixed; inset: 0;
+    z-index: 3;
+    pointer-events: none;
+  }
+
+  /* ─── BOOT SCREEN ─── */
+  #boot {
+    position: fixed; inset: 0;
+    background: #000;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 40px 60px;
+    opacity: 1;
+    transition: opacity 1s ease;
+  }
+  #boot.fade-out { opacity: 0; pointer-events: none; }
+
+  .boot-line {
+    font-size: clamp(11px, 1.5vw, 15px);
+    color: var(--green);
+    text-shadow: var(--glow-green);
+    line-height: 2;
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: opacity 0.3s, transform 0.3s;
+  }
+  .boot-line.show { opacity: 1; transform: translateX(0); }
+  .boot-line.error { color: var(--red); text-shadow: 0 0 8px #ff3838; }
+  .boot-line.ok { color: var(--green); }
+
+  /* ─── HUD WRAPPER ─── */
+  #hud {
+    position: fixed; inset: 0;
+    z-index: 10;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 1s ease;
+  }
+  #hud.visible { opacity: 1; }
+
+  /* BACK BUTTON */
+  #back-btn {
+    position: fixed;
+    top: 18px; left: 18px;
+    z-index: 50;
+    pointer-events: all;
+    background: rgba(0,0,0,0.75);
+    border: 1.5px solid var(--green);
+    color: var(--green);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    padding: 6px 14px;
+    cursor: pointer;
+    text-decoration: none;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-shadow: var(--glow-green);
+    box-shadow: var(--glow-green), inset 0 0 10px rgba(0,255,136,0.05);
+    transition: background 0.2s, box-shadow 0.2s;
+    clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+  }
+  #back-btn:hover {
+    background: rgba(0,255,136,0.12);
+    box-shadow: 0 0 16px #00ff88, 0 0 40px #00ff8866;
+  }
+
+  /* MISSION TIMER */
+  #timer {
+    position: fixed;
+    top: 58px; left: 18px;
+    font-size: 11px;
+    color: var(--amber);
+    text-shadow: var(--glow-amber);
+    letter-spacing: 2px;
+  }
+
+  /* SPEED HUD */
+  #speed-hud {
+    position: fixed;
+    top: 18px; right: 18px;
+    text-align: right;
+  }
+  #speed-label {
+    font-size: 9px;
+    color: var(--amber);
+    letter-spacing: 3px;
+    text-shadow: var(--glow-amber);
+    margin-bottom: 4px;
+  }
+  #speed-val {
+    font-size: clamp(22px, 4vw, 36px);
+    color: var(--green);
+    text-shadow: var(--glow-green);
+    letter-spacing: 2px;
+    font-variant-numeric: tabular-nums;
+  }
+  #speed-unit {
+    font-size: 9px;
+    color: var(--dim-green);
+    letter-spacing: 2px;
+  }
+  #speed-bar-wrap {
+    margin-top: 6px;
+    width: 140px;
+    height: 3px;
+    background: rgba(0,255,136,0.1);
+    border: 1px solid rgba(0,255,136,0.2);
+    margin-left: auto;
+  }
+  #speed-bar {
+    height: 100%;
+    width: 0%;
+    background: var(--green);
+    box-shadow: var(--glow-green);
+    transition: width 0.3s linear;
+  }
+
+  /* RADAR */
+  #radar {
+    position: fixed;
+    bottom: 30px; left: 30px;
+  }
+  #radar svg {
+    filter: drop-shadow(0 0 6px #00ff88);
+  }
+  .radar-ring {
+    fill: none;
+    stroke: rgba(0,255,136,0.15);
+    stroke-width: 1;
+  }
+  .radar-cross {
+    stroke: rgba(0,255,136,0.3);
+    stroke-width: 0.8;
+  }
+  .radar-ping {
+    fill: none;
+    stroke: var(--green);
+    stroke-width: 1.5;
+    animation: radar-expand 2.4s ease-out infinite;
+  }
+  .radar-ping:nth-child(2) { animation-delay: 0.8s; }
+  .radar-ping:nth-child(3) { animation-delay: 1.6s; }
+  .radar-blip {
+    fill: var(--green);
+    animation: blink-slow 3s infinite;
+  }
+  .radar-blip2 {
+    fill: var(--amber);
+    animation: blink-slow 4.5s infinite 1s;
+  }
+  @keyframes radar-expand {
+    0%   { r: 2; opacity: 1; }
+    100% { r: 36; opacity: 0; }
+  }
+
+  /* STATUS LIGHTS */
+  #status-lights {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+  .light-group { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .light-label { font-size: 7px; color: rgba(0,255,136,0.4); letter-spacing: 2px; }
+  .light {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    position: relative;
+  }
+  .light::after {
+    content: '';
+    position: absolute; inset: -3px;
+    border-radius: 50%;
+    opacity: 0.4;
+  }
+  .light.green  { background: var(--green); box-shadow: 0 0 8px var(--green), 0 0 16px var(--green); animation: blink-green 1.8s infinite; }
+  .light.amber  { background: var(--amber); box-shadow: 0 0 8px var(--amber), 0 0 16px var(--amber); animation: blink-amber 2.6s infinite 0.4s; }
+  .light.red    { background: var(--red);   box-shadow: 0 0 8px var(--red),   0 0 16px var(--red);   animation: blink-red 0.9s infinite 0.2s; }
+  .light.blue   { background: var(--blue);  box-shadow: 0 0 8px var(--blue),  0 0 16px var(--blue);  animation: blink-blue 3.1s infinite 1s; }
+
+  @keyframes blink-green { 0%,100% { opacity:1; } 50% { opacity:0.15; } }
+  @keyframes blink-amber { 0%,100% { opacity:1; } 50% { opacity:0.1; } }
+  @keyframes blink-red   { 0%,100% { opacity:1; } 50% { opacity:0.2; } }
+  @keyframes blink-blue  { 0%,100% { opacity:1; } 50% { opacity:0.05; } }
+  @keyframes blink-slow  { 0%,100% { opacity:1; } 50% { opacity:0.2; } }
+
+  /* SCAN LINES */
+  #scanlines {
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 2px, rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px
+    );
+    pointer-events: none;
+    z-index: 15;
+  }
+
+  /* VIGNETTE */
+  #vignette {
+    position: fixed; inset: 0;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.8) 100%);
+    pointer-events: none;
+    z-index: 9;
+  }
+
+  /* INSTRUMENT FLICKER PANELS */
+  .flicker-panel {
+    position: fixed;
+    background: rgba(0,255,136,0.03);
+    border: 1px solid rgba(0,255,136,0.08);
+    animation: flicker-in 0.6s ease forwards;
+    pointer-events: none;
+    z-index: 8;
+  }
+  #fp1 { bottom: 0; left: 0; width: 28%; height: 22%; border-radius: 0 8px 0 0; }
+  #fp2 { bottom: 0; right: 0; width: 28%; height: 22%; border-radius: 8px 0 0 0; }
+  #fp3 { bottom: 0; left: 50%; transform: translateX(-50%); width: 20%; height: 14%; border-radius: 8px 8px 0 0; }
+  @keyframes flicker-in {
+    0%   { opacity: 0; }
+    10%  { opacity: 0.8; }
+    20%  { opacity: 0.1; }
+    35%  { opacity: 0.9; }
+    50%  { opacity: 0.2; }
+    70%  { opacity: 1; }
+    100% { opacity: 1; }
+  }
+
+  /* STATIC FLASH */
+  #static {
+    position: fixed; inset: 0;
+    z-index: 30;
+    pointer-events: none;
+    opacity: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+    mix-blend-mode: screen;
+  }
+  #static.flash {
+    animation: static-flash 0.6s steps(2) forwards;
+  }
+  @keyframes static-flash {
+    0%   { opacity: 0.6; }
+    25%  { opacity: 0.2; }
+    50%  { opacity: 0.7; }
+    75%  { opacity: 0.1; }
+    100% { opacity: 0; }
+  }
+
+  /* TRANSMISSION BOX */
+  #transmission {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 25;
+    width: min(500px, 88vw);
+    background: rgba(0,5,2,0.92);
+    border: 1.5px solid var(--green);
+    box-shadow: var(--glow-green), inset 0 0 30px rgba(0,255,136,0.04);
+    padding: 28px 32px;
+    opacity: 0;
+    transition: opacity 0.5s;
+    clip-path: polygon(12px 0%, 100% 0%, calc(100% - 12px) 100%, 0% 100%);
+  }
+  #transmission.visible { opacity: 1; }
+  #tx-header {
+    font-size: 9px;
+    color: var(--amber);
+    letter-spacing: 4px;
+    text-shadow: var(--glow-amber);
+    margin-bottom: 16px;
+    border-bottom: 1px solid rgba(0,255,136,0.15);
+    padding-bottom: 10px;
+  }
+  #tx-text {
+    font-size: clamp(12px, 2vw, 15px);
+    color: var(--green);
+    text-shadow: var(--glow-green);
+    line-height: 2.2;
+    min-height: 80px;
+  }
+  .tx-cursor {
+    display: inline-block;
+    width: 9px; height: 15px;
+    background: var(--green);
+    box-shadow: var(--glow-green);
+    animation: cursor-blink 0.7s steps(1) infinite;
+    vertical-align: middle;
+    margin-left: 2px;
+  }
+  @keyframes cursor-blink { 0%,100% { opacity:1; } 50% { opacity:0; } }
+
+  /* COUNTDOWN */
+  #countdown {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 26;
+    font-size: clamp(60px, 14vw, 120px);
+    color: var(--green);
+    text-shadow: var(--glow-green), 0 0 60px rgba(0,255,136,0.3);
+    letter-spacing: 8px;
+    opacity: 0;
+    pointer-events: none;
+  }
+  #countdown.pulse {
+    animation: num-pulse 0.8s ease-out;
+  }
+  @keyframes num-pulse {
+    0%   { transform: translate(-50%,-50%) scale(1.4); opacity:1; }
+    100% { transform: translate(-50%,-50%) scale(1); opacity:1; }
+  }
+
+  /* LAUNCH TEXT */
+  #launch-text {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 26;
+    font-size: clamp(28px, 6vw, 52px);
+    color: var(--amber);
+    text-shadow: var(--glow-amber), 0 0 60px rgba(255,179,0,0.4);
+    letter-spacing: 16px;
+    text-transform: uppercase;
+    opacity: 0;
+  }
+
+  /* SCREEN SHAKE */
+  @keyframes shake {
+    0%,100% { transform: translate(0,0); }
+    10%  { transform: translate(-4px, 3px); }
+    20%  { transform: translate(4px, -3px); }
+    30%  { transform: translate(-3px, -4px); }
+    40%  { transform: translate(3px, 4px); }
+    50%  { transform: translate(-5px, 2px); }
+    60%  { transform: translate(5px, -2px); }
+    70%  { transform: translate(-2px, 5px); }
+    80%  { transform: translate(2px, -5px); }
+    90%  { transform: translate(-3px, 3px); }
+  }
+  body.shake { animation: shake 0.1s linear infinite; }
+  body.shake-heavy { animation: shake 0.07s linear infinite; }
+
+  /* ARRIVAL MESSAGE */
+  #arrival {
+    position: fixed;
+    bottom: 18vh; left: 50%;
+    transform: translateX(-50%);
+    z-index: 25;
+    width: min(520px, 90vw);
+    background: rgba(0,3,8,0.9);
+    border: 1.5px solid var(--blue);
+    box-shadow: var(--glow-blue), inset 0 0 30px rgba(0,207,255,0.03);
+    padding: 24px 30px;
+    opacity: 0;
+    transition: opacity 0.8s;
+    clip-path: polygon(10px 0%, 100% 0%, calc(100% - 10px) 100%, 0% 100%);
+    text-align: center;
+  }
+  #arrival.visible { opacity: 1; }
+  #arrival-header {
+    font-size: 9px;
+    color: var(--amber);
+    letter-spacing: 4px;
+    text-shadow: var(--glow-amber);
+    margin-bottom: 14px;
+  }
+  #arrival-text {
+    font-size: clamp(12px, 1.8vw, 14px);
+    color: var(--blue);
+    text-shadow: var(--glow-blue);
+    line-height: 2.2;
+  }
+
+  /* CORNER DECORATIONS */
+  .corner {
+    position: fixed;
+    width: 50px; height: 50px;
+    pointer-events: none;
+    z-index: 11;
+  }
+  .corner::before, .corner::after {
+    content: '';
+    position: absolute;
+    background: var(--green);
+    box-shadow: var(--glow-green);
+    opacity: 0.6;
+  }
+  .corner::before { width: 100%; height: 2px; }
+  .corner::after  { width: 2px; height: 100%; }
+  .corner-tl { top: 8px; left: 8px; }
+  .corner-tr { top: 8px; right: 8px; transform: scaleX(-1); }
+  .corner-bl { bottom: 8px; left: 8px; transform: scaleY(-1); }
+  .corner-br { bottom: 8px; right: 8px; transform: scale(-1); }
+
+  /* SCROLLING DATA SIDE PANELS */
+  .side-data {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 9px;
+    color: rgba(0,255,136,0.3);
+    text-shadow: 0 0 4px rgba(0,255,136,0.3);
+    letter-spacing: 1px;
+    line-height: 2.2;
+    pointer-events: none;
+    z-index: 11;
+  }
+  #data-left  { left: 14px; text-align: left; }
+  #data-right { right: 14px; text-align: right; }
+
+  /* PLANET CANVAS OVERLAY MESSAGE */
+  #dest-reached {
+    position: fixed;
+    top: 22%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 25;
+    font-size: clamp(11px, 2vw, 14px);
+    color: var(--amber);
+    text-shadow: var(--glow-amber);
+    letter-spacing: 4px;
+    opacity: 0;
+    text-align: center;
+    transition: opacity 1s;
+  }
+
+  /* ── NEON FINALE ── */
+  #neon-finale {
+    position: fixed; inset: 0;
+    background: #08030a;
+    z-index: 50;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 1.4s ease;
+  }
+  #neon-finale.visible { opacity: 1; pointer-events: all; }
+
+  .neon-sign {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    text-align: center;
+    line-height: 0.9;
+    letter-spacing: 0.05em;
+    position: relative;
+  }
+  #sign-bunny {
+    font-size: clamp(50px, 15vw, 140px);
+    color: #4a90d9;
+    text-shadow: 0 0 7px #fff, 0 0 42px #4a90d9, 0 0 102px #4a90d9;
+    animation: flickerBlue 4s infinite;
+  }
+  #sign-trev {
+    font-size: clamp(50px, 15vw, 140px);
+    color: #cc3333;
+    text-shadow: 0 0 7px #fff, 0 0 42px #cc3333, 0 0 102px #cc3333;
+    animation: flickerRed 3.7s infinite 0.4s;
+  }
+  @keyframes flickerBlue {
+    0%,19%,21%,23%,25%,54%,56%,100% { opacity:1; text-shadow:0 0 7px #fff,0 0 42px #4a90d9,0 0 102px #4a90d9; }
+    20%,24%,55% { opacity:0.6; text-shadow:none; }
+  }
+  @keyframes flickerRed {
+    0%,29%,31%,33%,35%,44%,46%,100% { opacity:1; text-shadow:0 0 7px #fff,0 0 42px #cc3333,0 0 102px #cc3333; }
+    30%,34%,45% { opacity:0.55; text-shadow:none; }
+  }
+  #neon-ground {
+    position: absolute; bottom: 0; left: 0; width: 100%; height: 35%;
+    background: linear-gradient(to top, rgba(20,5,30,1) 0%, transparent 100%);
+    pointer-events: none;
+  }
+  #neon-tagline {
+    position: absolute; bottom: 12%;
+    font-family: 'Share Tech Mono', monospace;
+    color: #c8a882; font-size: clamp(12px, 2.5vw, 17px);
+    text-align: center; padding: 0 20px;
+    opacity: 0; transition: opacity 1.2s ease;
+    letter-spacing: 0.08em;
+  }
+  #neon-finale.visible #neon-tagline { opacity: 1; transition-delay: 1.5s; }
+
+  /* ── MUSIC BUTTON ── */
+  #music-btn {
+    position: fixed; top: 18px; right: 18px;
+    z-index: 200;
+    background: rgba(0,0,0,0.7);
+    border: 1.5px solid var(--green);
+    color: var(--green);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 18px;
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    text-shadow: var(--glow-green);
+    box-shadow: var(--glow-green);
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+  #music-btn:hover { background: rgba(0,255,136,0.12); box-shadow: 0 0 20px #00ff88; }
+  #music-btn.playing { animation: btnPulse 2s infinite; }
+  @keyframes btnPulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.1); } }
+
+</style>
+</head>
+<body>
+
+<!-- MUSIC -->
+<audio id="bgMusic" loop>
+  <source src="Jericho.mp3" type="audio/mpeg">
+</audio>
+<button id="music-btn" aria-label="Toggle music">🎵</button>
+
+<!-- BACK BUTTON (always visible) -->
+<a id="back-btn" href="index.html">&#9664; BACK</a>
+
+<!-- MISSION TIMER -->
+<div id="timer">T+ 00:00</div>
+
+<!-- BOOT SCREEN -->
+<div id="boot">
+  <div class="boot-line" id="bl0">// NEXUS-7 FLIGHT COMPUTER v4.2.1</div>
+  <div class="boot-line" id="bl1">INITIALIZING NAVIGATION SYSTEMS...</div>
+  <div class="boot-line ok" id="bl2">OXYGEN LEVELS: <span style="color:#00ff88">NOMINAL</span></div>
+  <div class="boot-line ok" id="bl3">FUEL: <span style="color:#00ff88">100%</span> ████████████████████</div>
+  <div class="boot-line ok" id="bl4">ENGINE STATUS: <span style="color:#00ff88">ONLINE</span></div>
+  <div class="boot-line ok" id="bl5">GYROSCOPE: <span style="color:#00ff88">CALIBRATED</span></div>
+  <div class="boot-line ok" id="bl6">LIFE SUPPORT: <span style="color:#00ff88">STABLE</span></div>
+  <div class="boot-line" style="color:#ffb300;text-shadow:0 0 8px #ffb300" id="bl7">ALL SYSTEMS GO — AWAITING LAUNCH COMMAND</div>
+</div>
+
+<!-- COCKPIT BACKGROUND -->
+<div id="bg"></div>
+
+<!-- STAR CANVAS -->
+<canvas id="canvas-stars"></canvas>
+
+<!-- HUD -->
+<div id="hud">
+  <!-- Speed -->
+  <div id="speed-hud">
+    <div id="speed-label">VELOCITY</div>
+    <div id="speed-val">00000</div>
+    <div id="speed-unit">KM/S</div>
+    <div id="speed-bar-wrap"><div id="speed-bar"></div></div>
+  </div>
+
+  <!-- Radar -->
+  <div id="radar">
+    <svg width="100" height="100" viewBox="0 0 80 80">
+      <circle cx="40" cy="40" r="36" class="radar-ring"/>
+      <circle cx="40" cy="40" r="24" class="radar-ring"/>
+      <circle cx="40" cy="40" r="12" class="radar-ring"/>
+      <line x1="4" y1="40" x2="76" y2="40" class="radar-cross"/>
+      <line x1="40" y1="4" x2="40" y2="76" class="radar-cross"/>
+      <circle cx="40" cy="40" r="2" class="radar-ping"/>
+      <circle cx="40" cy="40" r="2" class="radar-ping"/>
+      <circle cx="40" cy="40" r="2" class="radar-ping"/>
+      <circle cx="58" cy="26" r="2.5" class="radar-blip"/>
+      <circle cx="22" cy="54" r="2" class="radar-blip2"/>
+      <circle cx="48" cy="60" r="1.5" class="radar-blip"/>
+    </svg>
+    <div style="font-size:7px;color:rgba(0,255,136,0.4);letter-spacing:3px;margin-top:2px;text-align:center">RADAR</div>
+  </div>
+
+  <!-- Status Lights -->
+  <div id="status-lights">
+    <div class="light-group"><div class="light green"></div><div class="light-label">SYS</div></div>
+    <div class="light-group"><div class="light amber"></div><div class="light-label">FUEL</div></div>
+    <div class="light-group"><div class="light green"></div><div class="light-label">O2</div></div>
+    <div class="light-group"><div class="light red"></div><div class="light-label">THRST</div></div>
+    <div class="light-group"><div class="light green"></div><div class="light-label">NAV</div></div>
+    <div class="light-group"><div class="light amber"></div><div class="light-label">COM</div></div>
+    <div class="light-group"><div class="light blue"></div><div class="light-label">SHLD</div></div>
+  </div>
+
+  <!-- Corner marks -->
+  <div class="corner corner-tl"></div>
+  <div class="corner corner-tr"></div>
+  <div class="corner corner-bl"></div>
+  <div class="corner corner-br"></div>
+
+  <!-- Side data streams -->
+  <div class="side-data" id="data-left">
+    LAT: 28.573°N<br>
+    LON: 080.649°W<br>
+    ALT: ---<br>
+    HDG: 047.3°<br>
+    PITCH: +02.1°<br>
+    ROLL: -00.4°<br>
+    GRV: 0.00G<br>
+    TEMP: -270°C<br>
+  </div>
+  <div class="side-data" id="data-right">
+    SECTOR: 7<br>
+    DIST: ---<br>
+    ETA: ---<br>
+    SIG: STRONG<br>
+    PWR: 98.4%<br>
+    THRML: OK<br>
+    RAD: 0.02mSv<br>
+    ID: NX-7<br>
+  </div>
+</div>
+
+<!-- Instrument panels flicker -->
+<div class="flicker-panel" id="fp1" style="display:none"></div>
+<div class="flicker-panel" id="fp2" style="display:none"></div>
+<div class="flicker-panel" id="fp3" style="display:none"></div>
+
+<!-- Static overlay -->
+<div id="static"></div>
+
+<!-- Transmission box -->
+<div id="transmission">
+  <div id="tx-header">▶ INCOMING TRANSMISSION — ENCRYPTED CHANNEL 7</div>
+  <div id="tx-text"><span class="tx-cursor"></span></div>
+</div>
+
+<!-- Countdown -->
+<div id="countdown"></div>
+<div id="launch-text">LAUNCH</div>
+
+<!-- Destination reached label -->
+<div id="dest-reached">● EARTH ORBIT ACHIEVED ●</div>
+
+<!-- Arrival message -->
+<div id="arrival">
+  <div id="arrival-header">▶ TRANSMISSION — SECTOR 7 CONTROL</div>
+  <div id="arrival-text"><span class="tx-cursor"></span></div>
+</div>
+
+<!-- Neon Finale -->
+<div id="neon-finale">
+  <div id="sign-bunny" class="neon-sign">BUNNY</div>
+  <div id="sign-trev"  class="neon-sign">TREV</div>
+  <div id="neon-ground"></div>
+  <p id="neon-tagline">Every name has a story. We write yours in light.</p>
+</div>
+
+<!-- Overlays -->
+<div id="vignette"></div>
+<div id="scanlines"></div>
+
+<script>
+'use strict';
+
+/* ──────────────────────────── CANVAS SETUP ──────────────────────────── */
+const canvas = document.getElementById('canvas-stars');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+/* ──────────────────────────── STATE ──────────────────────────── */
+let phase = 0;
+let speed = 0;
+let targetSpeed = 0;
+let timerStart = null;
+let timerInterval = null;
+let animFrameId = null;
+
+// Stars for background drift (post-launch)
+const driftStars = [];
+const NUM_DRIFT = 200;
+for (let i = 0; i < NUM_DRIFT; i++) {
+  driftStars.push({
+    x: Math.random() * 2000 - 1000,
+    y: Math.random() * 2000 - 1000,
+    z: Math.random() * 1000,
+    pz: 0
+  });
+}
+
+// Hyperspace stars
+const hyperStars = [];
+const NUM_HYPER = 350;
+for (let i = 0; i < NUM_HYPER; i++) {
+  hyperStars.push(newHyperStar());
+}
+function newHyperStar() {
+  return {
+    x: (Math.random() - 0.5) * canvas.width * 2,
+    y: (Math.random() - 0.5) * canvas.height * 2,
+    z: Math.random() * 1200 + 100,
+    speed: Math.random() * 2 + 1
+  };
+}
+
+// Planet
+let planetRadius = 0;
+let planetTarget = 0;
+let planetVisible = false;
+
+/* ──────────────────────────── SPEED HUD ──────────────────────────── */
+function updateSpeedDisplay(val) {
+  const v = Math.floor(val);
+  document.getElementById('speed-val').textContent = String(v).padStart(5, '0');
+  document.getElementById('speed-bar').style.width = (v / 99999 * 100) + '%';
+}
+
+function animateSpeed(target, duration) {
+  const start = speed;
+  const startTime = performance.now();
+  function tick(now) {
+    const t = Math.min((now - startTime) / duration, 1);
+    const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+    speed = start + (target - start) * ease;
+    updateSpeedDisplay(speed);
+    if (t < 1) requestAnimationFrame(tick);
+    else speed = target;
+  }
+  requestAnimationFrame(tick);
+}
+
+/* ──────────────────────────── TIMER ──────────────────────────── */
+function startTimer() {
+  timerStart = Date.now();
+  timerInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - timerStart) / 1000);
+    const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+    const s = String(elapsed % 60).padStart(2, '0');
+    document.getElementById('timer').textContent = `T+ ${m}:${s}`;
+  }, 1000);
+}
+
+/* ──────────────────────────── TYPING EFFECT ──────────────────────────── */
+function typeText(el, lines, interval, callback) {
+  const fullText = lines.join('\n');
+  let i = 0;
+  const cursor = el.querySelector('.tx-cursor');
+
+  function step() {
+    if (i <= fullText.length) {
+      const txt = fullText.slice(0, i);
+      el.innerHTML = txt.replace(/\n/g, '<br>') + '<span class="tx-cursor"></span>';
+      i++;
+      setTimeout(step, interval);
+    } else {
+      // Remove cursor
+      el.innerHTML = fullText.replace(/\n/g, '<br>');
+      if (callback) callback();
+    }
+  }
+  step();
+}
+
+/* ──────────────────────────── STATIC FLASH ──────────────────────────── */
+function flashStatic() {
+  const s = document.getElementById('static');
+  s.classList.remove('flash');
+  void s.offsetWidth;
+  s.classList.add('flash');
+}
+
+/* ──────────────────────────── SCREEN SHAKE ──────────────────────────── */
+function shake(duration, intensity) {
+  document.body.classList.remove('shake', 'shake-heavy');
+  document.body.classList.add(intensity === 'heavy' ? 'shake-heavy' : 'shake');
+  setTimeout(() => document.body.classList.remove('shake', 'shake-heavy'), duration);
+}
+
+/* ──────────────────────────── BOOT SEQUENCE ──────────────────────────── */
+const bootLines = ['bl0','bl1','bl2','bl3','bl4','bl5','bl6','bl7'];
+function runBoot() {
+  bootLines.forEach((id, i) => {
+    setTimeout(() => {
+      document.getElementById(id).classList.add('show');
+    }, i * 420);
+  });
+}
+
+/* ──────────────────────────── CANVAS DRAW LOOP ──────────────────────────── */
+let hyperActive = false;
+let hyperIntensity = 0; // 0→1
+let driftActive = false;
+let driftSpeed = 0;
+
+function drawFrame() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2, cy = H / 2;
+
+  if (driftActive && !hyperActive) {
+    // Slow star drift
+    driftStars.forEach(s => {
+      s.z -= driftSpeed;
+      if (s.z <= 0) s.z = 900;
+      const sx = (s.x / s.z) * 500 + cx;
+      const sy = (s.y / s.z) * 500 + cy;
+      const r = Math.max(0.3, (1 - s.z / 1000) * 2);
+      const alpha = (1 - s.z / 1000) * 0.9;
+      ctx.beginPath();
+      ctx.arc(sx, sy, r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+      ctx.fill();
+    });
+  }
+
+  if (hyperActive) {
+    // Hyperspace streaks
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.fillRect(0, 0, W, H);
+
+    hyperStars.forEach(s => {
+      s.pz = s.z;
+      s.z -= 18 * hyperIntensity + 4;
+      if (s.z <= 0) {
+        s.x = (Math.random() - 0.5) * W * 2;
+        s.y = (Math.random() - 0.5) * H * 2;
+        s.z = 1000;
+        s.pz = s.z;
+        return;
+      }
+      const sx  = (s.x / s.z)  * 600 + cx;
+      const sy  = (s.y / s.z)  * 600 + cy;
+      const psx = (s.x / s.pz) * 600 + cx;
+      const psy = (s.y / s.pz) * 600 + cy;
+      const len = Math.hypot(sx - psx, sy - psy);
+      const alpha = Math.min(1, (1 - s.z / 1000) + 0.2);
+
+      ctx.beginPath();
+      ctx.moveTo(psx, psy);
+      ctx.lineTo(sx, sy);
+      ctx.strokeStyle = `rgba(180,220,255,${alpha})`;
+      ctx.lineWidth = Math.max(0.5, (1 - s.z / 1000) * 2.5);
+      ctx.stroke();
+    });
+  }
+
+  if (planetVisible) {
+    // Grow planet
+    if (planetRadius < planetTarget) planetRadius += (planetTarget - planetRadius) * 0.012;
+
+    // Position in cockpit "window" area — roughly center-upper
+    const px = cx + 20, py = cy * 0.6;
+    const r = planetRadius;
+
+    // Outer glow
+    const glow = ctx.createRadialGradient(px, py, r * 0.8, px, py, r * 2.2);
+    glow.addColorStop(0, 'rgba(30,100,200,0.15)');
+    glow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.beginPath();
+    ctx.arc(px, py, r * 2.2, 0, Math.PI * 2);
+    ctx.fillStyle = glow;
+    ctx.fill();
+
+    // Planet body
+    const grad = ctx.createRadialGradient(px - r*0.25, py - r*0.2, r*0.05, px, py, r);
+    grad.addColorStop(0, '#4fc3f7');
+    grad.addColorStop(0.35, '#1565c0');
+    grad.addColorStop(0.6, '#0d47a1');
+    grad.addColorStop(0.8, '#1b5e20');
+    grad.addColorStop(1, '#0a0a1a');
+    ctx.beginPath();
+    ctx.arc(px, py, r, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Cloud wisps
+    ctx.save();
+    ctx.globalAlpha = 0.25;
+    ctx.beginPath();
+    ctx.arc(px, py, r, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.beginPath();
+    ctx.ellipse(px - r*0.1, py - r*0.2, r*0.5, r*0.09, 0.3, 0, Math.PI*2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(px + r*0.2, py + r*0.3, r*0.4, r*0.07, -0.4, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+
+    // Atmosphere rim
+    const rim = ctx.createRadialGradient(px, py, r * 0.92, px, py, r * 1.08);
+    rim.addColorStop(0, 'rgba(100,200,255,0)');
+    rim.addColorStop(0.5, 'rgba(100,200,255,0.25)');
+    rim.addColorStop(1, 'rgba(100,200,255,0)');
+    ctx.beginPath();
+    ctx.arc(px, py, r * 1.08, 0, Math.PI * 2);
+    ctx.fillStyle = rim;
+    ctx.fill();
+  }
+
+  animFrameId = requestAnimationFrame(drawFrame);
+}
+
+/* ──────────────────────────── TRANSMISSION TYPEWRITER ──────────────────────────── */
+function showTransmission(lines, cb) {
+  const tx = document.getElementById('transmission');
+  const txText = document.getElementById('tx-text');
+  tx.classList.add('visible');
+  typeText(txText, lines, 38, () => {
+    if (cb) setTimeout(cb, 800);
+  });
+}
+
+function hideTransmission() {
+  document.getElementById('transmission').classList.remove('visible');
+}
+
+/* ──────────────────────────── COUNTDOWN ──────────────────────────── */
+function runCountdown(cb) {
+  const el = document.getElementById('countdown');
+  const nums = ['5', '4', '3', '2', '1'];
+  let i = 0;
+
+  function next() {
+    if (i < nums.length) {
+      el.style.opacity = '1';
+      el.textContent = nums[i];
+      el.classList.remove('pulse');
+      void el.offsetWidth;
+      el.classList.add('pulse');
+      shake(150, 'normal');
+      i++;
+      setTimeout(next, 900);
+    } else {
+      el.style.opacity = '0';
+      // LAUNCH
+      const lt = document.getElementById('launch-text');
+      lt.style.opacity = '1';
+      lt.style.transition = 'opacity 0.2s';
+      shake(1500, 'heavy');
+      setTimeout(() => {
+        lt.style.opacity = '0';
+        if (cb) cb();
+      }, 1400);
+    }
+  }
+  next();
+}
+
+/* ──────────────────────────── SIDE DATA UPDATER ──────────────────────────── */
+function startDataFlicker() {
+  const altVals = ['024km', '180km', '380km', '740km', '1200km', '4800km'];
+  const distVals = ['3.8×10⁸km', '2.1×10⁸km', '9.4×10⁷km', '4.2×10⁷km', '8.1×10⁶km'];
+  let ai = 0, di = 0;
+  setInterval(() => {
+    const dl = document.getElementById('data-left');
+    const dr = document.getElementById('data-right');
+    const spd = Math.floor(speed);
+    const lat = (28.573 + Math.random()*0.002 - 0.001).toFixed(3);
+    const lon = (80.649 + Math.random()*0.002 - 0.001).toFixed(3);
+    const hdg = (47.3 + Math.random()*0.4 - 0.2).toFixed(1);
+    dl.innerHTML = `LAT: ${lat}°N<br>LON: ${lon}°W<br>ALT: ${altVals[Math.min(ai, altVals.length-1)]}<br>HDG: ${hdg}°<br>PITCH: +${(2.1+Math.random()*0.1).toFixed(1)}°<br>ROLL: -${(0.4+Math.random()*0.05).toFixed(2)}°<br>GRV: ${(speed/999999).toFixed(2)}G<br>TEMP: -270°C`;
+    dr.innerHTML = `SECTOR: 7<br>DIST: ${distVals[Math.min(di,distVals.length-1)]}<br>ETA: ${speed > 0 ? Math.max(0, Math.floor(60 - (speed/99999)*60)) + 'min' : '---'}<br>SIG: STRONG<br>PWR: ${(98.4-Math.random()*0.3).toFixed(1)}%<br>THRML: OK<br>RAD: ${(0.02+Math.random()*0.005).toFixed(3)}mSv<br>ID: NX-7`;
+    if (speed > 10000) ai = Math.min(ai + 1, altVals.length - 1);
+    if (speed > 20000) di = Math.min(di + 1, distVals.length - 1);
+  }, 600);
+}
+
+/* ──────────────────────────── PHASES ──────────────────────────── */
+function init() {
+  // Start canvas loop
+  drawFrame();
+
+  // Phase 1: Boot
+  runBoot();
+
+  // 4s: Boot complete → cockpit fades in
+  setTimeout(() => {
+    document.getElementById('boot').classList.add('fade-out');
+    document.getElementById('bg').classList.add('visible');
+    document.getElementById('hud').classList.add('visible');
+    canvas.classList.add('visible');
+    document.getElementById('fp1').style.display = '';
+    document.getElementById('fp2').style.display = '';
+    document.getElementById('fp3').style.display = '';
+    startTimer();
+    startDataFlicker();
+    animateSpeed(12000, 3000);
+    driftActive = true;
+    driftSpeed = 0.8;
+  }, 4000);
+
+  // Phase 2: Transmission (4.8s)
+  setTimeout(() => {
+    flashStatic();
+    setTimeout(() => {
+      showTransmission([
+        'INCOMING TRANSMISSION...',
+        'MISSION: REACH SECTOR 7',
+        'DESTINATION: EARTH ORBIT',
+        'INITIATING LAUNCH SEQUENCE'
+      ]);
+    }, 600);
+  }, 4800);
+
+  // Phase 3: Hide transmission, countdown (8s)
+  setTimeout(() => {
+    hideTransmission();
+    runCountdown(() => {
+      // After LAUNCH — stars go brrr
+      driftActive = false;
+      hyperActive = true;
+      hyperIntensity = 0;
+      // Ramp up hyper
+      let t = 0;
+      const ramp = setInterval(() => {
+        t += 0.04;
+        hyperIntensity = Math.min(1, t);
+        if (t >= 1) clearInterval(ramp);
+      }, 80);
+      animateSpeed(99999, 4500);
+      // Dim bg slightly
+      document.getElementById('bg').style.transition = 'opacity 1.5s';
+      document.getElementById('bg').style.opacity = '0.55';
+    });
+  }, 8000);
+
+  // Phase 4: Hyperspeed in full swing (13s)
+  setTimeout(() => {
+    shake(1800, 'heavy');
+  }, 13200);
+
+  // Phase 5: Slow down, arrival (18s)
+  setTimeout(() => {
+    // Decelerate hyper
+    let t = 1;
+    const slowDown = setInterval(() => {
+      t -= 0.03;
+      hyperIntensity = Math.max(0, t);
+      if (t <= 0) {
+        clearInterval(slowDown);
+        hyperActive = false;
+        driftActive = true;
+        driftSpeed = 0.2;
+      }
+    }, 80);
+    animateSpeed(0, 4000);
+    document.getElementById('bg').style.opacity = '1';
+  }, 18000);
+
+  // Planet appears (20s)
+  setTimeout(() => {
+    planetVisible = true;
+    planetRadius = 5;
+    planetTarget = Math.min(window.innerWidth, window.innerHeight) * 0.22;
+  }, 20000);
+
+  // Destination reached label (21.5s)
+  setTimeout(() => {
+    document.getElementById('dest-reached').classList.add('visible');
+  }, 21500);
+
+  // Arrival message (22.5s)
+  setTimeout(() => {
+    flashStatic();
+    setTimeout(() => {
+      const arrival = document.getElementById('arrival');
+      const arrText = document.getElementById('arrival-text');
+      arrival.classList.add('visible');
+      typeText(arrText, [
+        'DESTINATION REACHED',
+        'EARTH ORBIT — STABLE',
+        '─────────────────────────────',
+        'Every great journey starts',
+        'with a single line of code.',
+        'Welcome to the stars, captain.'
+      ], 42);
+    }, 500);
+  }, 22500);
+  // Neon finale (30s — after arrival typewriter is done)
+  setTimeout(() => {
+    document.getElementById('neon-finale').classList.add('visible');
+  }, 30000);
+}
+
+/* ──────────────────────────── MUSIC ──────────────────────────── */
+(function(){
+  const btn   = document.getElementById('music-btn');
+  const audio = document.getElementById('bgMusic');
+  let playing = false;
+  btn.addEventListener('click', function(){
+    if(playing){
+      audio.pause();
+      btn.textContent = '🔇';
+      btn.classList.remove('playing');
+    } else {
+      audio.play().catch(function(){});
+      btn.textContent = '🎵';
+      btn.classList.add('playing');
+    }
+    playing = !playing;
+  });
+})();
+
+/* ──────────────────────────── GO ──────────────────────────── */
+window.addEventListener('load', init);
+</script>
+</body>
+</html>

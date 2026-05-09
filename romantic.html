@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bunny & Trev</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@400;600;700&family=Orbitron:wght@700;900&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --pink: #ff1493;
+  --hotpink: #ff69b4;
+  --blue-neon: #4a90d9;
+  --red-neon: #cc3333;
+  --gold: #c8a882;
+  --orange: #ff6b35;
+}
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: linear-gradient(135deg, #ffe0f0, #fff0f5, #fce4ec);
+  font-family: 'Quicksand', sans-serif;
+}
+
+/* ── FLOATERS ── */
+.floater {
+  position: fixed;
+  animation: floatUp linear infinite;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.2;
+}
+@keyframes floatUp {
+  0%   { transform: translateY(110vh) rotate(0deg);   opacity: 0; }
+  10%  { opacity: 0.22; }
+  90%  { opacity: 0.22; }
+  100% { transform: translateY(-10vh) rotate(360deg); opacity: 0; }
+}
+
+/* ── MUSIC BTN ── */
+#music-btn {
+  position: fixed; top: 18px; right: 20px;
+  z-index: 200;
+  background: rgba(255,255,255,0.75);
+  border: 2px solid var(--hotpink);
+  border-radius: 50%;
+  width: 46px; height: 46px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 20px;
+  color: var(--pink);
+  transition: background 0.3s, transform 0.2s;
+  backdrop-filter: blur(4px);
+}
+#music-btn:hover { background: rgba(255,105,180,0.2); transform: scale(1.08); }
+
+/* ══════════════
+   PHASE 1
+══════════════ */
+#phase1 {
+  position: fixed; inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.5s;
+}
+
+#mainCard {
+  position: relative; z-index: 10;
+  background: white;
+  border-radius: 30px;
+  padding: 38px 28px 34px;
+  max-width: 420px; width: 92%;
+  box-shadow: 0 20px 60px rgba(255,105,180,0.3), 0 0 0 3px var(--hotpink);
+  text-align: center;
+  animation: cardPop 0.5s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes cardPop {
+  from { transform: scale(0.5); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+.card-title {
+  font-family: 'Pacifico', cursive;
+  font-size: clamp(20px, 5.5vw, 28px);
+  color: var(--pink);
+  margin-bottom: 4px;
+}
+.card-sub {
+  font-size: 11px; color: #f48fb1;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  margin-bottom: 24px;
+}
+
+#prompt-text {
+  font-size: clamp(15px, 4vw, 19px);
+  font-weight: 700; color: #880e4f;
+  min-height: 50px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 30px; line-height: 1.4;
+}
+
+/* ── BUTTON ARENA ── */
+#btn-row {
+  display: flex;
+  align-items: center; justify-content: center;
+  gap: 20px; min-height: 80px;
+  position: relative;
+}
+
+.choice-btn {
+  border: none; outline: none;
+  border-radius: 50px;
+  font-family: 'Quicksand', sans-serif;
+  font-weight: 700;
+  font-size: 1rem; letter-spacing: 0.12em;
+  cursor: pointer;
+  padding: 16px 40px;
+  transition: transform 0.35s cubic-bezier(.34,1.56,.64,1),
+              box-shadow 0.35s ease, opacity 0.5s ease,
+              font-size 0.3s ease, padding 0.3s ease,
+              width 0.5s cubic-bezier(.34,1.2,.64,1);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  position: relative; z-index: 2;
+}
+
+#yes-btn {
+  background: linear-gradient(135deg, #ff69b4, #ff1493);
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(255,20,147,0.38);
+  transform-origin: center;
+}
+#no-btn {
+  background: white; color: #bbb;
+  border: 2px solid #e0e0e0;
+  transform-origin: center;
+}
+#no-btn.shake {
+  animation: shake 0.4s ease;
+}
+@keyframes shake {
+  0%,100% { transform: translateX(0) rotate(0deg); }
+  20%     { transform: translateX(-8px) rotate(-2.5deg); }
+  40%     { transform: translateX(8px)  rotate(2.5deg); }
+  60%     { transform: translateX(-5px) rotate(-1.5deg); }
+  80%     { transform: translateX(5px)  rotate(1.5deg); }
+}
+
+#whisper {
+  position: absolute; bottom: -26px;
+  left: 50%; transform: translateX(-50%);
+  font-size: 12px; color: #f48fb1;
+  font-style: italic; white-space: nowrap;
+  opacity: 0; transition: opacity 0.4s;
+  pointer-events: none;
+}
+
+/* ── INK BLEED ── */
+#ink-bleed {
+  position: fixed; inset: 0; z-index: 50;
+  background: radial-gradient(circle at 50% 50%, #8B0000, #3a0000 40%, #000 80%);
+  opacity: 0; pointer-events: none;
+}
+#ink-bleed.active { pointer-events: all; }
+
+/* ══════════════
+   PHASE 2 — NEON
+══════════════ */
+#phase2 {
+  position: fixed; inset: 0; z-index: 20;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: #08030a;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.8s ease;
+}
+
+#buildingGlowBlue {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -65%);
+  width: 60vw; height: 15vw;
+  background: radial-gradient(ellipse, rgba(74,144,217,0.3) 0%, transparent 70%);
+  filter: blur(20px); pointer-events: none;
+}
+#buildingGlowRed {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -5%);
+  width: 60vw; height: 15vw;
+  background: radial-gradient(ellipse, rgba(204,51,51,0.3) 0%, transparent 70%);
+  filter: blur(20px); pointer-events: none;
+}
+#groundGlow {
+  position: absolute; bottom: 25%; left: 50%;
+  transform: translateX(-50%);
+  width: 80vw; height: 8vw;
+  background: radial-gradient(ellipse, rgba(180,50,80,0.25) 0%, transparent 70%);
+  filter: blur(15px);
+  animation: groundPulse 2s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes groundPulse {
+  0%,100% { opacity: 0.6; }
+  50%     { opacity: 1; }
+}
+#buildingGround {
+  position: absolute; bottom: 0; left: 0;
+  width: 100%; height: 35%;
+  background: linear-gradient(to top, rgba(20,5,30,1) 0%, rgba(10,3,15,0.8) 50%, transparent 100%);
+  pointer-events: none;
+}
+
+.neon-sign {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 900;
+  text-align: center; line-height: 1;
+  letter-spacing: 0.05em;
+  position: relative; z-index: 1;
+  opacity: 0;
+}
+#signBunny {
+  font-size: clamp(60px, 18vw, 160px);
+  color: var(--blue-neon);
+  text-shadow:
+    0 0 7px #fff, 0 0 10px #fff, 0 0 21px #fff,
+    0 0 42px var(--blue-neon), 0 0 82px var(--blue-neon),
+    0 0 92px var(--blue-neon), 0 0 102px var(--blue-neon);
+  animation: flickerBlue 4s infinite;
+}
+#signTrev {
+  font-size: clamp(60px, 18vw, 160px);
+  color: var(--red-neon);
+  text-shadow:
+    0 0 7px #fff, 0 0 10px #fff, 0 0 21px #fff,
+    0 0 42px var(--red-neon), 0 0 82px var(--red-neon),
+    0 0 92px var(--red-neon), 0 0 102px var(--red-neon);
+  animation: flickerRed 3.7s infinite 0.4s;
+  margin-top: -0.05em;
+}
+@keyframes flickerBlue {
+  0%,19%,21%,23%,25%,54%,56%,100% {
+    text-shadow: 0 0 7px #fff,0 0 10px #fff,0 0 21px #fff,
+      0 0 42px var(--blue-neon),0 0 82px var(--blue-neon),
+      0 0 92px var(--blue-neon),0 0 102px var(--blue-neon);
+    opacity: 1;
+  }
+  20%,24%,55% { text-shadow: none; opacity: 0.6; }
+}
+@keyframes flickerRed {
+  0%,29%,31%,33%,35%,44%,46%,100% {
+    text-shadow: 0 0 7px #fff,0 0 10px #fff,0 0 21px #fff,
+      0 0 42px var(--red-neon),0 0 82px var(--red-neon),
+      0 0 92px var(--red-neon),0 0 102px var(--red-neon);
+    opacity: 1;
+  }
+  30%,34%,45% { text-shadow: none; opacity: 0.55; }
+}
+
+/* ── MESSAGE OVERLAY ── */
+#messageOverlay {
+  position: fixed; inset: 0; z-index: 30;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 40px 24px;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.6s ease;
+  background: rgba(8,3,10,0.88);
+}
+.message-line {
+  font-family: 'Playfair Display', serif;
+  color: var(--gold);
+  font-size: clamp(15px, 4.2vw, 22px);
+  text-align: center; line-height: 1.65;
+  max-width: 480px;
+  opacity: 0; transform: translateY(18px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+  margin-bottom: 10px;
+}
+.message-line.visible { opacity: 1; transform: translateY(0); }
+.message-line.signature {
+  font-size: clamp(20px, 5.8vw, 32px);
+  color: var(--orange);
+  font-style: italic; font-weight: 700;
+  margin-top: 18px; letter-spacing: 0.02em;
+}
+
+/* grain */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 999; opacity: 0.35;
+}
+</style>
+</head>
+<body>
+
+<audio id="bg-music" loop><source src="barbie.mp3" type="audio/mpeg"></audio>
+
+<button id="music-btn" aria-label="Toggle music">♪</button>
+
+<div id="floaters"></div>
+<div id="ink-bleed"></div>
+
+<!-- PHASE 1 -->
+<div id="phase1">
+  <div id="mainCard">
+    <div class="card-title">Bunny &amp; Trev 💕</div>
+    <div class="card-sub">something special awaits</div>
+    <div id="prompt-text">Is it true you're ready for something special? 🌹</div>
+    <div id="btn-row">
+      <button class="choice-btn" id="yes-btn" onclick="onYes()">YES 💖</button>
+      <button class="choice-btn" id="no-btn"
+        onmouseenter="onNoHover()"
+        ontouchstart="onNoHover(); return false;"
+        onclick="onNoHover()">NO</button>
+      <span id="whisper"></span>
+    </div>
+  </div>
+</div>
+
+<!-- PHASE 2 -->
+<div id="phase2">
+  <div id="buildingGlowBlue"></div>
+  <div id="buildingGlowRed"></div>
+  <div id="buildingGround"></div>
+  <div id="groundGlow"></div>
+  <div id="signBunny" class="neon-sign">BUNNY</div>
+  <div id="signTrev"  class="neon-sign">TREV</div>
+</div>
+
+<div id="messageOverlay">
+  <p class="message-line">We build websites that feel like moments.</p>
+  <p class="message-line">Weddings. Birthdays. Milestones. Proposals.</p>
+  <p class="message-line">Each one crafted for the people you love most.</p>
+  <p class="message-line">This is what we do — tell your story.</p>
+  <p class="message-line signature">— Bunny &amp; Trev</p>
+</div>
+
+<script>
+  // ── FLOATERS ──
+  const EMOJIS = ['🌹','💖','✨','💕','🌸','💗','⭐','🌺'];
+  const floatersDiv = document.getElementById('floaters');
+  for (let i = 0; i < 20; i++) {
+    const f = document.createElement('div');
+    f.className = 'floater';
+    f.textContent = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+    f.style.left   = (Math.random() * 100) + 'vw';
+    f.style.fontSize = (14 + Math.random() * 16) + 'px';
+    f.style.animationDuration = (7 + Math.random() * 10) + 's';
+    f.style.animationDelay    = (-Math.random() * 12)    + 's';
+    floatersDiv.appendChild(f);
+  }
+
+  // ── MUSIC ──
+  const music    = document.getElementById('bg-music');
+  const musicBtn = document.getElementById('music-btn');
+  let musicOn = false;
+  musicBtn.addEventListener('click', () => {
+    musicOn = !musicOn;
+    if (musicOn) { music.play().catch(()=>{}); musicBtn.textContent = '♫'; }
+    else         { music.pause();               musicBtn.textContent = '♪'; }
+  });
+
+  // ── PHASE 1 ──
+  const yesBtn  = document.getElementById('yes-btn');
+  const noBtn   = document.getElementById('no-btn');
+  const whisper = document.getElementById('whisper');
+  let noAttempts = 0;
+  const MAX = 5;
+  const WHISPERS = [
+    "Are you sure? 🤔",
+    "Hmm, really? 😏",
+    "You don't mean that...",
+    "Last chance... 😘",
+    "Okay fine 😂"
+  ];
+
+  function onNoHover() {
+    if (noAttempts >= MAX) return;
+    noAttempts++;
+
+    const yScale  = Math.min(1 + noAttempts * 0.22, 2.5);
+    const nScale  = Math.max(1 - noAttempts * 0.14, 0.28);
+    const glowR   = noAttempts * 9;
+    const glowA   = Math.min(noAttempts * 0.15, 0.8);
+
+    yesBtn.style.transform  = `scale(${yScale})`;
+    yesBtn.style.boxShadow  = `0 0 ${glowR}px ${glowR/2}px rgba(255,20,147,${glowA}), 0 0 ${glowR*2}px rgba(255,105,180,${glowA*0.4})`;
+    noBtn.style.transform   = `scale(${nScale})`;
+
+    noBtn.classList.remove('shake');
+    void noBtn.offsetWidth;
+    noBtn.classList.add('shake');
+
+    if (noAttempts < MAX) {
+      whisper.textContent  = WHISPERS[noAttempts - 1];
+      whisper.style.opacity = '1';
+      setTimeout(() => { whisper.style.opacity = '0'; }, 1800);
+    }
+
+    if (noAttempts >= MAX) {
+      setTimeout(() => {
+        noBtn.style.opacity       = '0';
+        noBtn.style.pointerEvents = 'none';
+        whisper.style.opacity     = '0';
+        yesBtn.style.transform    = 'scale(1)';
+        yesBtn.style.width        = '72vw';
+        yesBtn.style.maxWidth     = '360px';
+        yesBtn.style.padding      = '26px 0';
+        yesBtn.style.fontSize     = 'clamp(1.4rem, 4vw, 2rem)';
+        yesBtn.style.borderRadius = '60px';
+        yesBtn.style.transition   = 'all 0.6s cubic-bezier(.34,1.2,.64,1), box-shadow 0.5s';
+        yesBtn.style.boxShadow    = '0 0 40px 14px rgba(255,20,147,0.55), 0 0 80px rgba(255,105,180,0.3)';
+      }, 150);
+    }
+  }
+
+  function onYes() { triggerInkBleed(); }
+
+  // ── INK BLEED ──
+  function triggerInkBleed() {
+    const bleed = document.getElementById('ink-bleed');
+    bleed.classList.add('active');
+    let op = 0;
+    const t = setInterval(() => {
+      op = Math.min(op + 0.07, 1);
+      bleed.style.opacity = op;
+      if (op >= 1) {
+        clearInterval(t);
+        const p1 = document.getElementById('phase1');
+        p1.style.opacity       = '0';
+        p1.style.pointerEvents = 'none';
+        setTimeout(startPhase2, 300);
+      }
+    }, 28);
+  }
+
+  // ── PHASE 2 ──
+  function startPhase2() {
+    const bleed = document.getElementById('ink-bleed');
+    const p2    = document.getElementById('phase2');
+    p2.style.opacity       = '1';
+    p2.style.pointerEvents = 'all';
+
+    let op = 1;
+    const t = setInterval(() => {
+      op = Math.max(op - 0.03, 0);
+      bleed.style.opacity = op;
+      if (op <= 0) {
+        clearInterval(t);
+        bleed.classList.remove('active');
+        revealNeon();
+      }
+    }, 28);
+  }
+
+  function revealNeon() {
+    const bunny = document.getElementById('signBunny');
+    const trev  = document.getElementById('signTrev');
+
+    setTimeout(() => {
+      bunny.style.transition = 'opacity 0.6s ease';
+      bunny.style.opacity    = '1';
+    }, 200);
+    setTimeout(() => {
+      trev.style.transition  = 'opacity 0.6s ease';
+      trev.style.opacity     = '1';
+    }, 800);
+
+    setTimeout(showMessage, 3000);
+  }
+
+  function showMessage() {
+    const overlay = document.getElementById('messageOverlay');
+    overlay.style.opacity       = '1';
+    overlay.style.pointerEvents = 'all';
+    document.querySelectorAll('.message-line').forEach((l, i) => {
+      setTimeout(() => l.classList.add('visible'), i * 950);
+    });
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bunny & Trev</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --green: #00ff88;
+    --amber: #ffb300;
+    --red: #ff3838;
+    --blue-neon: #4a90d9;
+    --red-neon: #cc3333;
+    --warm-bg: #0a0505;
+    --message-gold: #c8a882;
+    --message-orange: #ff6b35;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: var(--warm-bg);
+    font-family: 'Playfair Display', serif;
+  }
+
+  /* z-0: Canvas */
+  #roadCanvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+  }
+
+  /* z-1: Warm overlay + vignette + scanlines + grain */
+  #atmosphereLayer {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 1s ease;
+  }
+
+  #vignetteOverlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+    pointer-events: none;
+    background: radial-gradient(ellipse at 50% 60%, transparent 30%, rgba(5,2,2,0.75) 80%, rgba(3,0,0,0.95) 100%);
+  }
+
+  #scanlinesOverlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.07) 2px,
+      rgba(0,0,0,0.07) 4px
+    );
+  }
+
+  #grainOverlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.35;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.4'/%3E%3C/svg%3E");
+    background-size: 180px 180px;
+    animation: grainShift 0.15s steps(1) infinite;
+  }
+
+  @keyframes grainShift {
+    0%   { background-position: 0 0; }
+    10%  { background-position: -30px -15px; }
+    20%  { background-position: 15px -45px; }
+    30%  { background-position: -60px 30px; }
+    40%  { background-position: 45px -60px; }
+    50%  { background-position: -15px 60px; }
+    60%  { background-position: 60px 15px; }
+    70%  { background-position: -45px -30px; }
+    80%  { background-position: 30px 45px; }
+    90%  { background-position: -60px -60px; }
+    100% { background-position: 0 0; }
+  }
+
+  /* z-5: BMW Interior */
+  #bwmInterior {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 5;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.8s ease;
+  }
+
+  /* Interior SVG canvas */
+  #interiorCanvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+  }
+
+  /* z-10: Arrival flash */
+  #arrivalFlash {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 10;
+    background: #ffffff;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+
+  /* z-20: Building phase */
+  #buildingPhase {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #08030a;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.8s ease;
+  }
+
+  #buildingGround {
+    position: absolute;
+    bottom: 0; left: 0;
+    width: 100%; height: 35%;
+    background: linear-gradient(to top, rgba(20,5,30,1) 0%, rgba(10,3,15,0.8) 50%, transparent 100%);
+  }
+
+  #buildingGlowBlue {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -60%);
+    width: 60vw;
+    height: 15vw;
+    background: radial-gradient(ellipse, rgba(74,144,217,0.3) 0%, transparent 70%);
+    filter: blur(20px);
+    pointer-events: none;
+  }
+
+  #buildingGlowRed {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -10%);
+    width: 60vw;
+    height: 15vw;
+    background: radial-gradient(ellipse, rgba(204,51,51,0.3) 0%, transparent 70%);
+    filter: blur(20px);
+    pointer-events: none;
+  }
+
+  #groundGlow {
+    position: absolute;
+    bottom: 25%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80vw;
+    height: 8vw;
+    background: radial-gradient(ellipse, rgba(180,50,80,0.25) 0%, transparent 70%);
+    filter: blur(15px);
+    animation: groundPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes groundPulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  .neon-sign {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    text-align: center;
+    line-height: 1;
+    letter-spacing: 0.05em;
+    position: relative;
+    z-index: 1;
+  }
+
+  #signBunny {
+    font-size: clamp(60px, 18vw, 160px);
+    color: var(--blue-neon);
+    text-shadow:
+      0 0 7px #fff,
+      0 0 10px #fff,
+      0 0 21px #fff,
+      0 0 42px var(--blue-neon),
+      0 0 82px var(--blue-neon),
+      0 0 92px var(--blue-neon),
+      0 0 102px var(--blue-neon);
+    animation: flickerBlue 4s infinite;
+  }
+
+  #signTrev {
+    font-size: clamp(60px, 18vw, 160px);
+    color: var(--red-neon);
+    text-shadow:
+      0 0 7px #fff,
+      0 0 10px #fff,
+      0 0 21px #fff,
+      0 0 42px var(--red-neon),
+      0 0 82px var(--red-neon),
+      0 0 92px var(--red-neon),
+      0 0 102px var(--red-neon);
+    animation: flickerRed 3.7s infinite 0.4s;
+    margin-top: -0.05em;
+  }
+
+  @keyframes flickerBlue {
+    0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+      text-shadow:
+        0 0 7px #fff,
+        0 0 10px #fff,
+        0 0 21px #fff,
+        0 0 42px var(--blue-neon),
+        0 0 82px var(--blue-neon),
+        0 0 92px var(--blue-neon),
+        0 0 102px var(--blue-neon);
+      opacity: 1;
+    }
+    20%, 24%, 55% {
+      text-shadow: none;
+      opacity: 0.6;
+    }
+  }
+
+  @keyframes flickerRed {
+    0%, 29%, 31%, 33%, 35%, 44%, 46%, 100% {
+      text-shadow:
+        0 0 7px #fff,
+        0 0 10px #fff,
+        0 0 21px #fff,
+        0 0 42px var(--red-neon),
+        0 0 82px var(--red-neon),
+        0 0 92px var(--red-neon),
+        0 0 102px var(--red-neon);
+      opacity: 1;
+    }
+    30%, 34%, 45% {
+      text-shadow: none;
+      opacity: 0.55;
+    }
+  }
+
+  /* z-30: Message overlay */
+  #messageOverlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 24px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.6s ease;
+    background: rgba(8,3,10,0.88);
+  }
+
+  .message-line {
+    font-family: 'Playfair Display', serif;
+    color: var(--message-gold);
+    font-size: clamp(15px, 4.2vw, 22px);
+    text-align: center;
+    line-height: 1.65;
+    max-width: 480px;
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+    margin-bottom: 10px;
+  }
+
+  .message-line.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .message-line.signature {
+    font-size: clamp(20px, 5.8vw, 32px);
+    color: var(--message-orange);
+    font-style: italic;
+    font-weight: 700;
+    margin-top: 18px;
+    letter-spacing: 0.02em;
+  }
+
+  /* Tap to start screen */
+  #tapPrompt {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(8,3,5,0.92);
+    cursor: pointer;
+    transition: opacity 0.5s ease;
+  }
+
+  #tapPrompt.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .tap-title {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: clamp(28px, 8vw, 56px);
+    color: var(--amber);
+    text-shadow: 0 0 20px rgba(255,179,0,0.5);
+    letter-spacing: 0.12em;
+    margin-bottom: 12px;
+  }
+
+  .tap-subtitle {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(13px, 3.5vw, 18px);
+    color: rgba(200,168,130,0.7);
+    letter-spacing: 0.08em;
+    font-style: italic;
+    margin-bottom: 48px;
+  }
+
+  .tap-pulse {
+    width: 64px; height: 64px;
+    border: 2px solid var(--amber);
+    border-radius: 50%;
+    position: relative;
+    animation: tapPulse 1.6s ease-out infinite;
+  }
+
+  .tap-pulse::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px; height: 20px;
+    background: var(--amber);
+    border-radius: 50%;
+    box-shadow: 0 0 15px var(--amber);
+  }
+
+  @keyframes tapPulse {
+    0% { transform: scale(1); opacity: 1; }
+    70% { transform: scale(1.6); opacity: 0; }
+    100% { transform: scale(1); opacity: 0; }
+  }
+
+  .tap-label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(10px, 2.8vw, 14px);
+    color: var(--amber);
+    letter-spacing: 0.25em;
+    margin-top: 20px;
+    text-transform: uppercase;
+    opacity: 0.85;
+    animation: blinkText 1.4s ease-in-out infinite;
+  }
+
+  @keyframes blinkText {
+    0%, 100% { opacity: 0.85; }
+    50% { opacity: 0.2; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Audio -->
+<audio id="trapAudio" src="mask off.mp3" preload="auto" loop></audio>
+
+<!-- z-0: Road canvas -->
+<canvas id="roadCanvas"></canvas>
+
+<!-- z-1: Atmosphere layers -->
+<div id="vignetteOverlay"></div>
+<div id="scanlinesOverlay"></div>
+<div id="grainOverlay"></div>
+
+<!-- z-5: BMW Interior canvas -->
+<div id="bwmInterior">
+  <canvas id="interiorCanvas"></canvas>
+</div>
+
+<!-- z-10: Arrival flash -->
+<div id="arrivalFlash"></div>
+
+<!-- z-20: Building phase -->
+<div id="buildingPhase">
+  <div id="buildingGlowBlue"></div>
+  <div id="buildingGlowRed"></div>
+  <div id="buildingGround"></div>
+  <div id="groundGlow"></div>
+  <div id="signBunny" class="neon-sign">BUNNY</div>
+  <div id="signTrev" class="neon-sign">TREV</div>
+</div>
+
+<!-- z-30: Message overlay -->
+<div id="messageOverlay">
+
+  <!-- EDIT MESSAGE BELOW -->
+  <p class="message-line">We build websites that feel like moments.</p>
+  <p class="message-line">Weddings. Birthdays. Milestones. Proposals.</p>
+  <p class="message-line">Each one crafted for the people you love most.</p>
+  <p class="message-line">This is what we do — tell your story.</p>
+  <p class="message-line signature">— Bunny &amp; Trev</p>
+  <!-- EDIT MESSAGE ABOVE -->
+
+</div>
+
+<!-- z-50: Tap to start -->
+<div id="tapPrompt">
+  <div class="tap-title">BUNNY &amp; TREV</div>
+  <div class="tap-subtitle">custom occasion websites</div>
+  <div class="tap-pulse"></div>
+  <div class="tap-label">Tap to begin</div>
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+const state = {
+  started: false,
+  time: 0,
+  speed: 0,
+  maxSpeed: 120,
+  phase: 'drive', // drive | flash | building | message
+  steerAngle: 0,
+  steerVelocity: 0,
+  idleWobble: 0,
+  gear: 1,
+  rpm: 0,
+  starField: [],
+  trees: [],
+  roadLines: [],
+  frameCount: 0,
+};
+
+// ─── Elements ─────────────────────────────────────────────────────────────────
+const roadCanvas = document.getElementById('roadCanvas');
+const rCtx = roadCanvas.getContext('2d');
+const interiorCanvas = document.getElementById('interiorCanvas');
+const iCtx = interiorCanvas.getContext('2d');
+const tapPrompt = document.getElementById('tapPrompt');
+const bwmInterior = document.getElementById('bwmInterior');
+const arrivalFlash = document.getElementById('arrivalFlash');
+const buildingPhase = document.getElementById('buildingPhase');
+const messageOverlay = document.getElementById('messageOverlay');
+const messageLines = document.querySelectorAll('.message-line');
+const trapAudio = document.getElementById('trapAudio');
+
+// ─── Resize ──────────────────────────────────────────────────────────────────
+function resize() {
+  roadCanvas.width = window.innerWidth;
+  roadCanvas.height = window.innerHeight;
+  interiorCanvas.width = window.innerWidth;
+  interiorCanvas.height = window.innerHeight;
+  initScene();
+}
+
+function initScene() {
+  const W = roadCanvas.width, H = roadCanvas.height;
+
+  // Stars
+  state.starField = [];
+  for (let i = 0; i < 100; i++) {
+    state.starField.push({
+      x: Math.random() * W,
+      y: Math.random() * H * 0.42,
+      r: Math.random() * 1.2 + 0.3,
+      twinkle: Math.random() * Math.PI * 2,
+      speed: Math.random() * 0.03 + 0.01,
+    });
+  }
+
+  // Trees (7 left, 7 right)
+  state.trees = [];
+  for (let i = 0; i < 7; i++) {
+    const t = (i + 0.5) / 7;
+    state.trees.push({ side: 'left',  t, offset: 0 });
+    state.trees.push({ side: 'right', t, offset: 0 });
+  }
+
+  // Road dashes
+  state.roadLines = [];
+  for (let i = 0; i < 20; i++) {
+    state.roadLines.push({ z: i / 20 });
+  }
+}
+
+window.addEventListener('resize', resize);
+resize();
+
+// ─── Start ───────────────────────────────────────────────────────────────────
+function startExperience() {
+  if (state.started) return;
+  state.started = true;
+  tapPrompt.classList.add('hidden');
+  bwmInterior.style.opacity = '1';
+
+  trapAudio.volume = 0.75;
+  trapAudio.play().catch(() => {});
+
+  requestAnimationFrame(loop);
+}
+
+document.addEventListener('click', startExperience);
+document.addEventListener('touchstart', startExperience, { passive: true });
+
+// ─── Timeline ─────────────────────────────────────────────────────────────────
+let lastTime = null;
+let elapsedTotal = 0;
+let flashStarted = false;
+let buildingStarted = false;
+let messageStarted = false;
+
+function loop(ts) {
+  if (!lastTime) lastTime = ts;
+  const dt = Math.min((ts - lastTime) / 1000, 0.05);
+  lastTime = ts;
+  elapsedTotal += dt;
+  state.frameCount++;
+
+  const t = elapsedTotal;
+
+  // Speed ramp: 0→60 over 8s, ease-in
+  if (t < 8) {
+    const progress = t / 8;
+    state.speed = 60 * (1 - Math.pow(1 - progress, 2));
+  } else {
+    state.speed = 60;
+  }
+
+  // Gear
+  state.gear = Math.min(6, Math.ceil((state.speed / 60) * 6) || 1);
+  state.rpm = (state.speed / 60) * 0.85 + Math.sin(t * 8) * 0.04 + 0.1;
+
+  // Steering idle wobble
+  state.idleWobble = Math.sin(t * 0.7) * 2 + Math.sin(t * 1.3) * 1;
+  const spinBonus = (state.speed / 60) * 3;
+  state.steerAngle = state.idleWobble + (t * spinBonus);
+
+  // Flash at 8s
+  if (t >= 8 && !flashStarted) {
+    flashStarted = true;
+    triggerFlash();
+  }
+
+  // Building at 9s
+  if (t >= 9 && !buildingStarted) {
+    buildingStarted = true;
+    bwmInterior.style.opacity = '0';
+    buildingPhase.style.opacity = '1';
+    state.phase = 'building';
+  }
+
+  // Message at 14s
+  if (t >= 14 && !messageStarted) {
+    messageStarted = true;
+    messageOverlay.style.opacity = '1';
+    messageOverlay.style.pointerEvents = 'auto';
+    revealMessageLines();
+  }
+
+  // Draw
+  drawRoad(t);
+  if (t < 9.5) drawInterior(t);
+
+  requestAnimationFrame(loop);
+}
+
+function triggerFlash() {
+  arrivalFlash.style.transition = 'opacity 0.25s ease';
+  arrivalFlash.style.opacity = '1';
+  setTimeout(() => {
+    arrivalFlash.style.transition = 'opacity 0.5s ease';
+    arrivalFlash.style.opacity = '0';
+  }, 280);
+}
+
+function revealMessageLines() {
+  messageLines.forEach((line, i) => {
+    setTimeout(() => {
+      line.classList.add('visible');
+    }, i * 1500);
+  });
+}
+
+// ─── Road Drawing ─────────────────────────────────────────────────────────────
+function drawRoad(t) {
+  const W = roadCanvas.width;
+  const H = roadCanvas.height;
+  rCtx.clearRect(0, 0, W, H);
+
+  const horizonY = H * 0.40;
+  const speedNorm = state.speed / 60;
+
+  // Sky gradient
+  const skyGrad = rCtx.createLinearGradient(0, 0, 0, horizonY);
+  skyGrad.addColorStop(0,   '#0a0508');
+  skyGrad.addColorStop(0.5, '#1a0a12');
+  skyGrad.addColorStop(1,   '#2a1518');
+  rCtx.fillStyle = skyGrad;
+  rCtx.fillRect(0, 0, W, horizonY);
+
+  // Stars
+  state.starField.forEach(s => {
+    s.twinkle += s.speed * (1 + speedNorm * 0.3);
+    const alpha = 0.4 + 0.55 * Math.abs(Math.sin(s.twinkle));
+    rCtx.beginPath();
+    rCtx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    rCtx.fillStyle = `rgba(255,230,200,${alpha})`;
+    rCtx.fill();
+  });
+
+  // Horizon glow
+  const horizGlow = rCtx.createLinearGradient(0, horizonY - 30, 0, horizonY + 30);
+  horizGlow.addColorStop(0, 'transparent');
+  horizGlow.addColorStop(0.5, 'rgba(255,120,40,0.12)');
+  horizGlow.addColorStop(1, 'transparent');
+  rCtx.fillStyle = horizGlow;
+  rCtx.fillRect(0, horizonY - 30, W, 60);
+
+  // Road surface
+  const cx = W / 2;
+  const roadWidthBottom = W;
+  const roadWidthHorizon = W * 0.18;
+
+  rCtx.beginPath();
+  rCtx.moveTo(cx - roadWidthHorizon / 2, horizonY);
+  rCtx.lineTo(cx + roadWidthHorizon / 2, horizonY);
+  rCtx.lineTo(cx + roadWidthBottom / 2, H);
+  rCtx.lineTo(cx - roadWidthBottom / 2, H);
+  rCtx.closePath();
+
+  const roadGrad = rCtx.createLinearGradient(0, horizonY, 0, H);
+  roadGrad.addColorStop(0, '#1a0d0d');
+  roadGrad.addColorStop(0.4, '#120808');
+  roadGrad.addColorStop(1, '#0d0505');
+  rCtx.fillStyle = roadGrad;
+  rCtx.fill();
+
+  // Road edge lines
+  rCtx.strokeStyle = 'rgba(255,140,50,0.35)';
+  rCtx.lineWidth = 2;
+  rCtx.beginPath();
+  rCtx.moveTo(cx - roadWidthHorizon / 2, horizonY);
+  rCtx.lineTo(cx - roadWidthBottom / 2, H);
+  rCtx.stroke();
+  rCtx.beginPath();
+  rCtx.moveTo(cx + roadWidthHorizon / 2, horizonY);
+  rCtx.lineTo(cx + roadWidthBottom / 2, H);
+  rCtx.stroke();
+
+  // Headlight beam
+  const beamGrad = rCtx.createRadialGradient(cx, H * 0.95, 0, cx, H * 0.6, H * 0.5);
+  beamGrad.addColorStop(0, 'rgba(255,220,130,0.18)');
+  beamGrad.addColorStop(0.4, 'rgba(255,180,80,0.07)');
+  beamGrad.addColorStop(1, 'transparent');
+  rCtx.fillStyle = beamGrad;
+  rCtx.beginPath();
+  rCtx.moveTo(cx, H * 0.95);
+  rCtx.lineTo(cx - roadWidthBottom * 0.35, H);
+  rCtx.lineTo(cx + roadWidthBottom * 0.35, H);
+  rCtx.closePath();
+  rCtx.fill();
+
+  // Center dashes
+  const dashScroll = (t * speedNorm * 180) % 1;
+  const numDashes = 20;
+  for (let i = 0; i < numDashes; i++) {
+    const z = ((i / numDashes) + dashScroll) % 1;
+    const perspective = 1 - Math.pow(1 - z, 0.55);
+    const y = horizonY + (H - horizonY) * perspective;
+    const roadW = roadWidthHorizon + (roadWidthBottom - roadWidthHorizon) * perspective;
+    const dashW = Math.max(1.5, roadW * 0.012);
+    const dashH = Math.max(6, (H - horizonY) * 0.035 * (z + 0.1));
+    const alpha = Math.min(1, z * 2) * 0.75;
+    const glowAlpha = alpha * 0.4;
+
+    // Glow
+    rCtx.shadowColor = 'rgba(255,180,50,0.8)';
+    rCtx.shadowBlur = 6 * z;
+    rCtx.fillStyle = `rgba(255,200,80,${glowAlpha})`;
+    rCtx.fillRect(cx - dashW * 2, y - dashH / 2, dashW * 4, dashH);
+
+    // Core dash
+    rCtx.shadowBlur = 0;
+    rCtx.fillStyle = `rgba(255,210,100,${alpha})`;
+    rCtx.fillRect(cx - dashW / 2, y - dashH / 2, dashW, dashH);
+  }
+  rCtx.shadowBlur = 0;
+
+  // Trees
+  const treeScroll = (t * speedNorm * 0.6) % 1;
+  for (let i = 0; i < 7; i++) {
+    for (const side of ['left', 'right']) {
+      const rawT = ((i / 7) + treeScroll) % 1;
+      // Perspective mapping
+      const perspective = 1 - Math.pow(1 - rawT, 0.6);
+      const y = horizonY + (H - horizonY) * perspective;
+      const roadW = roadWidthHorizon + (roadWidthBottom - roadWidthHorizon) * perspective;
+      const sideOffset = roadW * 0.52;
+      const treeH = Math.max(10, perspective * H * 0.55);
+      const treeW = treeH * 0.45;
+      const alpha = Math.min(1, rawT * 3) * 0.85;
+
+      const tx = side === 'left'
+        ? cx - sideOffset - treeW / 2
+        : cx + sideOffset + treeW / 2;
+
+      drawTree(rCtx, tx, y, treeW, treeH, side, alpha);
+    }
+  }
+}
+
+function drawTree(ctx, x, groundY, w, h, side, alpha) {
+  const layers = 3;
+  ctx.globalAlpha = alpha;
+  for (let l = 0; l < layers; l++) {
+    const lh = h * (0.5 + l * 0.25);
+    const lw = w * (1 - l * 0.2);
+    const ly = groundY - h * 0.15 - lh * l * 0.3;
+    const darkG = Math.floor(40 + l * 15);
+    ctx.fillStyle = `rgb(10,${darkG},15)`;
+    ctx.beginPath();
+    ctx.moveTo(x, ly - lh);
+    ctx.lineTo(x - lw / 2, ly);
+    ctx.lineTo(x + lw / 2, ly);
+    ctx.closePath();
+    ctx.fill();
+  }
+  // Trunk
+  ctx.fillStyle = 'rgba(20,10,5,0.8)';
+  ctx.fillRect(x - w * 0.08, groundY - h * 0.12, w * 0.16, h * 0.13);
+  ctx.globalAlpha = 1;
+}
+
+// ─── Interior Drawing ──────────────────────────────────────────────────────────
+function drawInterior(t) {
+  const W = interiorCanvas.width;
+  const H = interiorCanvas.height;
+  iCtx.clearRect(0, 0, W, H);
+
+  const cx = W / 2;
+  const speedNorm = state.speed / 60;
+  const fade = t < 8.5 ? 1 : Math.max(0, 1 - (t - 8.5) / 0.5);
+  if (fade <= 0) return;
+  iCtx.globalAlpha = fade;
+
+  // Dashboard panel
+  const dashH = H * 0.28;
+  const dashY = H - dashH;
+  const dashGrad = iCtx.createLinearGradient(0, dashY, 0, H);
+  dashGrad.addColorStop(0, 'rgba(25,10,5,0.0)');
+  dashGrad.addColorStop(0.15, 'rgba(30,12,6,0.92)');
+  dashGrad.addColorStop(1, 'rgba(15,5,2,1)');
+  iCtx.fillStyle = dashGrad;
+  iCtx.fillRect(0, dashY, W, dashH);
+
+  // Dashboard top edge ambient
+  iCtx.fillStyle = 'rgba(255,120,40,0.06)';
+  iCtx.fillRect(0, dashY, W, 2);
+
+  // Door pillars
+  const pillarW = W * 0.065;
+  // Left pillar
+  const lpGrad = iCtx.createLinearGradient(0, 0, pillarW * 1.5, 0);
+  lpGrad.addColorStop(0, 'rgba(15,6,3,0.98)');
+  lpGrad.addColorStop(1, 'rgba(20,8,4,0)');
+  iCtx.fillStyle = lpGrad;
+  iCtx.fillRect(0, 0, pillarW * 1.5, H);
+  // Right pillar
+  const rpGrad = iCtx.createLinearGradient(W, 0, W - pillarW * 1.5, 0);
+  rpGrad.addColorStop(0, 'rgba(15,6,3,0.98)');
+  rpGrad.addColorStop(1, 'rgba(20,8,4,0)');
+  iCtx.fillStyle = rpGrad;
+  iCtx.fillRect(W - pillarW * 1.5, 0, pillarW * 1.5, H);
+
+  // Seat edges (bottom corners)
+  const seatH = H * 0.22;
+  const seatW = W * 0.28;
+  // Left seat
+  const lsGrad = iCtx.createLinearGradient(0, H, seatW, H - seatH);
+  lsGrad.addColorStop(0, 'rgba(22,9,4,1)');
+  lsGrad.addColorStop(1, 'rgba(18,7,3,0)');
+  iCtx.fillStyle = lsGrad;
+  iCtx.beginPath();
+  iCtx.moveTo(0, H);
+  iCtx.lineTo(seatW * 0.8, H);
+  iCtx.lineTo(seatW, H - seatH);
+  iCtx.lineTo(0, H - seatH * 0.5);
+  iCtx.closePath();
+  iCtx.fill();
+  // Right seat
+  const rsGrad = iCtx.createLinearGradient(W, H, W - seatW, H - seatH);
+  rsGrad.addColorStop(0, 'rgba(22,9,4,1)');
+  rsGrad.addColorStop(1, 'rgba(18,7,3,0)');
+  iCtx.fillStyle = rsGrad;
+  iCtx.beginPath();
+  iCtx.moveTo(W, H);
+  iCtx.lineTo(W - seatW * 0.8, H);
+  iCtx.lineTo(W - seatW, H - seatH);
+  iCtx.lineTo(W, H - seatH * 0.5);
+  iCtx.closePath();
+  iCtx.fill();
+
+  // Side mirrors
+  drawMirror(iCtx, W * 0.06, H * 0.36, W * 0.11, H * 0.085, 'left', t);
+  drawMirror(iCtx, W * 0.94, H * 0.36, W * 0.11, H * 0.085, 'right', t);
+
+  // Gauges
+  const gaugeY = H - dashH * 0.52;
+  const gaugeR = Math.min(W * 0.09, 50);
+
+  // Speedometer (left of center)
+  drawSpeedometer(iCtx, cx - gaugeR * 2.6, gaugeY, gaugeR, state.speed, speedNorm);
+
+  // RPM bar (right of center)
+  drawRPMBar(iCtx, cx + gaugeR * 1.2, gaugeY - gaugeR * 0.8, gaugeR * 2.2, gaugeR * 0.3, state.rpm);
+
+  // Gear indicator
+  drawGearIndicator(iCtx, cx + gaugeR * 1.2, gaugeY + gaugeR * 0.25, gaugeR * 0.7, state.gear);
+
+  // Steering wheel
+  drawSteeringWheel(iCtx, cx, H - dashH * 0.1 + gaugeR * 0.3, Math.min(W * 0.22, 110), state.steerAngle * Math.PI / 180, speedNorm);
+
+  iCtx.globalAlpha = 1;
+}
+
+function drawMirror(ctx, x, y, w, h, side, t) {
+  const rx = w / 2, ry = h / 2;
+  ctx.save();
+  ctx.translate(x, y);
+
+  // Mirror body
+  ctx.beginPath();
+  ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(20,8,4,0.9)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(80,35,10,0.7)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Mirror reflection — warm amber road blur
+  ctx.save();
+  ctx.clip();
+  const mirrorGrad = ctx.createLinearGradient(-rx, -ry, rx, ry);
+  mirrorGrad.addColorStop(0, 'rgba(60,25,10,0.8)');
+  mirrorGrad.addColorStop(0.5, 'rgba(120,60,15,0.6)');
+  mirrorGrad.addColorStop(1, 'rgba(180,90,20,0.4)');
+  ctx.fillStyle = mirrorGrad;
+  ctx.fillRect(-rx, -ry, w, h);
+
+  // Simple road stripe in mirror
+  const stripe = 0.5 + 0.5 * Math.sin(t * 4 + (side === 'left' ? 0 : Math.PI));
+  ctx.fillStyle = `rgba(255,180,60,${0.2 * stripe})`;
+  ctx.fillRect(-2, -ry * 0.3, 4, ry * 0.6);
+  ctx.restore();
+
+  ctx.restore();
+}
+
+function drawSpeedometer(ctx, x, y, r, speed, speedNorm) {
+  // Background circle
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(10,4,2,0.85)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,150,40,0.4)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Tick marks
+  const startAngle = Math.PI * 0.75;
+  const endAngle = Math.PI * 2.25;
+  const range = endAngle - startAngle;
+  for (let i = 0; i <= 12; i++) {
+    const a = startAngle + (i / 12) * range;
+    const isMajor = i % 3 === 0;
+    const innerR = r * (isMajor ? 0.7 : 0.8);
+    ctx.beginPath();
+    ctx.moveTo(x + Math.cos(a) * innerR, y + Math.sin(a) * innerR);
+    ctx.lineTo(x + Math.cos(a) * r * 0.9, y + Math.sin(a) * r * 0.9);
+    ctx.strokeStyle = isMajor ? 'rgba(255,180,60,0.9)' : 'rgba(255,150,40,0.4)';
+    ctx.lineWidth = isMajor ? 1.5 : 0.8;
+    ctx.stroke();
+  }
+
+  // Needle
+  const needleAngle = startAngle + (speed / 120) * range;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(needleAngle);
+  ctx.beginPath();
+  ctx.moveTo(0, r * 0.08);
+  ctx.lineTo(0, -r * 0.78);
+  ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+  ctx.lineWidth = 1.5;
+  ctx.shadowColor = 'rgba(255,255,255,0.8)';
+  ctx.shadowBlur = 4;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.restore();
+
+  // Center dot
+  ctx.beginPath();
+  ctx.arc(x, y, r * 0.08, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,180,60,0.9)';
+  ctx.fill();
+
+  // Speed label
+  ctx.fillStyle = 'rgba(255,200,100,0.7)';
+  ctx.font = `bold ${r * 0.28}px Orbitron, monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(Math.round(speed), x, y + r * 0.35);
+  ctx.font = `${r * 0.2}px Orbitron, monospace`;
+  ctx.fillStyle = 'rgba(200,150,80,0.5)';
+  ctx.fillText('km/h', x, y + r * 0.55);
+}
+
+function drawRPMBar(ctx, x, y, w, h, rpm) {
+  // Background
+  ctx.fillStyle = 'rgba(10,4,2,0.7)';
+  ctx.strokeStyle = 'rgba(100,50,20,0.4)';
+  ctx.lineWidth = 1;
+  roundRect(ctx, x, y, w, h, h / 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // Fill bar
+  const fillW = Math.max(0, Math.min(1, rpm)) * (w - 4);
+  if (fillW > 0) {
+    const barGrad = ctx.createLinearGradient(x + 2, 0, x + 2 + fillW, 0);
+    barGrad.addColorStop(0, 'rgba(40,80,255,0.9)');
+    barGrad.addColorStop(0.6, 'rgba(200,100,20,0.9)');
+    barGrad.addColorStop(1, 'rgba(255,30,30,1)');
+    ctx.fillStyle = barGrad;
+    ctx.save();
+    ctx.beginPath();
+    roundRect(ctx, x + 2, y + 2, fillW, h - 4, (h - 4) / 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.fillStyle = 'rgba(200,140,60,0.5)';
+  ctx.font = `${h * 0.7}px Orbitron, monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText('RPM', x + w / 2, y - h * 0.3);
+}
+
+function drawGearIndicator(ctx, x, y, r, gear) {
+  ctx.beginPath();
+  ctx.arc(x + r / 2, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(10,4,2,0.8)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(200,20,20,0.5)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  ctx.fillStyle = '#ff3838';
+  ctx.shadowColor = '#ff3838';
+  ctx.shadowBlur = 8;
+  ctx.font = `bold ${r * 1.1}px Orbitron, monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(gear, x + r / 2, y + r * 0.42);
+  ctx.shadowBlur = 0;
+
+  ctx.fillStyle = 'rgba(200,100,60,0.5)';
+  ctx.font = `${r * 0.45}px Orbitron, monospace`;
+  ctx.fillText('GEAR', x + r / 2, y + r * 0.92);
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function drawSteeringWheel(ctx, cx, cy, r, angle, speedNorm) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(angle);
+
+  // Outer rim
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(60,25,8,0.95)';
+  ctx.lineWidth = r * 0.14;
+  ctx.stroke();
+
+  // Rim highlight
+  ctx.beginPath();
+  ctx.arc(0, 0, r, -Math.PI * 0.7, -Math.PI * 0.2);
+  ctx.strokeStyle = 'rgba(120,60,20,0.6)';
+  ctx.lineWidth = r * 0.06;
+  ctx.stroke();
+
+  // Spokes (3)
+  ctx.lineWidth = r * 0.07;
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * r * 0.15, Math.sin(a) * r * 0.15);
+    ctx.lineTo(Math.cos(a) * r * 0.85, Math.sin(a) * r * 0.85);
+    ctx.strokeStyle = 'rgba(50,20,6,0.9)';
+    ctx.stroke();
+
+    // Spoke highlight
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * r * 0.15, Math.sin(a) * r * 0.15);
+    ctx.lineTo(Math.cos(a) * r * 0.85, Math.sin(a) * r * 0.85);
+    ctx.strokeStyle = 'rgba(100,45,12,0.45)';
+    ctx.lineWidth = r * 0.025;
+    ctx.stroke();
+    ctx.lineWidth = r * 0.07;
+  }
+
+  // Center hub
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.22, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(20,8,3,1)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(80,30,8,0.8)';
+  ctx.lineWidth = r * 0.04;
+  ctx.stroke();
+
+  // BMW Roundel
+  drawBMWRoundel(ctx, 0, 0, r * 0.17);
+
+  ctx.restore();
+}
+
+function drawBMWRoundel(ctx, x, y, r) {
+  // Outer ring
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fill();
+
+  // Blue and white quadrants
+  const quadrants = [
+    { start: -Math.PI, end: -Math.PI / 2, color: '#1c69d4' },
+    { start: -Math.PI / 2, end: 0, color: '#fff' },
+    { start: 0, end: Math.PI / 2, color: '#1c69d4' },
+    { start: Math.PI / 2, end: Math.PI, color: '#fff' },
+  ];
+  quadrants.forEach(q => {
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.arc(x, y, r * 0.82, q.start, q.end);
+    ctx.closePath();
+    ctx.fillStyle = q.color;
+    ctx.fill();
+  });
+
+  // Outer chrome ring
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(180,130,60,0.9)';
+  ctx.lineWidth = r * 0.2;
+  ctx.stroke();
+
+  // Inner circle border
+  ctx.beginPath();
+  ctx.arc(x, y, r * 0.82, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(50,20,5,0.8)';
+  ctx.lineWidth = r * 0.06;
+  ctx.stroke();
+}
+</script>
+</body>
+</html>
